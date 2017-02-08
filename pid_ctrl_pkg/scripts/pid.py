@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import rospy
-import sys, time
+import sys
 from pid_ctrl_pkg.msg import *
 
 class pid:
 
     def __init__(self):
         print "init"
-        self.speed = 0.8
+        self.speed = 0.5
         self.steering_angle = 0
         self.last_time = 0.0
         self.last_error = 0
@@ -19,22 +19,23 @@ class pid:
         self.delta = 5
         self.lh = 0.21
 
-        self.pub = rospy.Publisher("ctrl_ackermann_drive", AckermannDrive, queue_size=10)
+        self.pub = rospy.Publisher("aut_ackermann_control", AckermannDrive, queue_size=10)
         self.sub = rospy.Subscriber("error", Num, self.callback)
         print "waiting for input"
 
-    def callback(data):
+    def callback(self, data):
         self.loop(data)
 
     def loop(self, data):
         error = data.num
 
         # Calculating dt
-        time = data.header.stamp.secs + data.header.stamp.nsecs / 1000000000.0
+        time = rospy.get_time()
+        #time = data.header.stamp.secs + data.header.stamp.nsecs / 1000000000.0
         dt = time - self.last_time
         #if dt > 10:
         #    dt = 0
-        self.last = time
+        self.last_time = time
 
         # Designing equations
         Ki = self.delta / self.wn
