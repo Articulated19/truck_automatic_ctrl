@@ -19,7 +19,7 @@ class pid:
         self.delta = 5
         self.lh = 0.21
 
-        self.pub = rospy.Publisher("aut_ackermann_control", AckermannDrive, queue_size=10)
+        self.pub = rospy.Publisher("auto_drive", AckermannDrive, queue_size=10)
         self.sub = rospy.Subscriber("error", Num, self.callback)
         print "waiting for input"
 
