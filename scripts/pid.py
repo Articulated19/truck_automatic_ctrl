@@ -2,15 +2,14 @@
 # license removed for brevity
 import rospy
 import sys
-#from hw_api_ackermann.msg import AckermannDrive
-#from gulliviewServer.msg import Num
 from ackermann_msgs.msg import AckermannDrive
 from std_msgs.msg import Int64
 
 class pid:
 
     def __init__(self):
-        print "init"
+        rospy.loginfo("init")
+
         self.speed = 0.5
         self.steering_angle = 0
         self.last_time = 0.0
@@ -23,17 +22,17 @@ class pid:
         self.delta = 5
         self.lh = 0.21
 
-        #self.pub = rospy.Publisher("auto_drive", AckermannDrive, queue_size=10)
-        #self.sub = rospy.Subscriber("error", Num, self.callback)
         self.pub = rospy.Publisher("auto_drive", AckermannDrive, queue_size=10)
         self.sub = rospy.Subscriber("error", Int64, self.callback)
-        print "waiting for input"
+        
+        rospy.loginfo("waiting for input")
 
     def callback(self, data):
         self.loop(data)
 
     def loop(self, data):
-        error = data.num
+        error = data.data
+        rospy.loginfo("received error value: %i", error)
 
         # Calculating dt
         time = rospy.get_time()
@@ -69,6 +68,7 @@ class pid:
         ack.speed = self.speed
 
         self.pub.publish(ack)
+        rospy.loginfo("published: [angle: %f, speed: %f]", ack.steering_angle, ack.speed)
 
 
 def main(args):
@@ -82,3 +82,6 @@ def main(args):
  
 if __name__ == '__main__':
     main(sys.argv)
+
+
+# To manually publish messages on'error' topic: $ rostopic pub /error std_msgs/Int64 -r 1 [value]
