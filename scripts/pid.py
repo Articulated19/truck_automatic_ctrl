@@ -27,7 +27,7 @@ class Pid:
 
         # Parameters
         self.seta = 0.5
-        self.wn = 2
+        self.wn = 5
         self.delta = 5
         self.lh = 0.21
 
@@ -56,7 +56,7 @@ class Pid:
         p = (self.wn**2 + self.speed) / (2 * self.seta * self.wn - self.delta * self.wn)
         Km = -(self.speed**2) / self.lh
         Kp = (-self.delta * self.wn * p) / Km
-        Kd = (2 * self.delta * self.wn - p) / (Kp * Km)
+        Kd = ((2 * self.delta * self.wn - p) / (Kp * Km)) * 0
 
         self.int = self.int + error * dt
 
@@ -68,6 +68,7 @@ class Pid:
 
         dev = (error - self.last_error) / dt
         self.steering_angle = Kp * error + Ki * self.int + Kd * dev
+        #self.steering_angle = Kp * error + (1 / Ki * self.int - Kd * dev) * Kp
 
         self.last_error = error
 
