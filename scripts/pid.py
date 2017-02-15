@@ -18,30 +18,30 @@ class Pid:
 
     def __init__(self):
         rospy.loginfo("init")
+        
 
-        self.speed = 0.8
+        self.speed = 0.6
         self.steering_angle = 0
         self.last_time = 0.0
         self.last_error = 0
         self.int = 0
 
         # Parameters
-        self.seta = 0.5
-        self.wn = 5
-        self.delta = 5
-        self.lh = 0.21
+        self.seta = rospy.get_param('pid/seta', 0.1)
+        self.wn = rospy.get_param('pid/wn', 0.3)
+        self.delta = rospy.get_param('pid/delta', 50.0)
+        self.lh = rospy.get_param('pid/lh', 0.27)
 
         self.pub = rospy.Publisher(PUBLISH_TOPIC, AckermannDrive, queue_size=10)
         self.sub = rospy.Subscriber(SUB_TOPIC, Int64, self.callback)
         
-        rospy.loginfo("waiting for input from topic 'error'")
 
     def callback(self, data):
         self.loop(data)
 
     def loop(self, data):
-        error = data.data
-        rospy.loginfo("received error: %i", error)
+        error = data.data/1000.0
+        #rospy.loginfo("received error: %i", error)
 
         # Calculating dt
         time = rospy.get_time()
@@ -50,25 +50,32 @@ class Pid:
         #if dt > 10:
         #    dt = 0
         self.last_time = time
+        rospy.loginfo("PID: dt: %s", dt)
 
         # Designing equations
-        Ki = (self.delta / self.wn) * 0
+        #Ki = (self.delta / self.wn) * 1
+        Ki = 1.1946
+        Kp = 4.52
+        Kd = 4.2729
         p = (self.wn**2 + self.speed) / (2 * self.seta * self.wn - self.delta * self.wn)
         Km = -(self.speed**2) / self.lh
-        Kp = (-self.delta * self.wn * p) / Km
-        Kd = ((2 * self.delta * self.wn - p) / (Kp * Km)) * 0
+        #Kp = (-self.delta * self.wn * p) / Km
+        #Kd = ((2 * self.seta * self.wn - p) / (Kp * Km)) * 1
+        rospy.loginfo("ki %s, kp %s, kd %s", Ki, Kp, Kd)
 
         self.int = self.int + error * dt
+        print self.int
 
         # anti-windup
-        #if self.int > 0.4 :
-        #    self.int = 0.4
-        #if self.int < -0.4:
-        #    self.int = -0.4
+        if self.int > 0.4 :
+            self.int = 0.4
+        if self.int < -0.4:
+            self.int = -0.4
 
         dev = (error - self.last_error) / dt
-        self.steering_angle = Kp * error + Ki * self.int + Kd * dev
+        self.steering_angle = Kp * error + Ki * self.int - Kp* Kd * dev
         #self.steering_angle = Kp * error + (1 / Ki * self.int - Kd * dev) * Kp
+	#self.steering_angle = Kp * error + 1  
 
         self.last_error = error
 
@@ -78,8 +85,6 @@ class Pid:
         ack.speed = self.speed
 
         self.pub.publish(ack)
-        rospy.loginfo("published: [angle: %f, speed: %f]", ack.steering_angle, ack.speed)
-
 
 def main(args):
     rospy.init_node('pid', anonymous=True)
