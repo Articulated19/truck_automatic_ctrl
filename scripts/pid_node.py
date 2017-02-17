@@ -33,7 +33,6 @@ class PIDNode:
 
         error = data.data / 1000.0
         steering_angle = self.pid.update(error)
-        print "steering angle", steering_angle
 
         # Construct the message
         ack = AckermannDrive()
