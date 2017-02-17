@@ -24,13 +24,11 @@ class PID:
         self.ITerm = 0.0
         
 
-    def update(self, error, dt = -1):
+    def update(self, error):
         
         current_time = time.time()
-        if dt == -1:
-            delta_time = self.current_time - self.last_time
-        else:
-            delta_time = dt
+        delta_time = self.current_time - self.last_time
+        
         delta_error = error - self.last_error
 
 

@@ -3,8 +3,8 @@
 import rospy
 #import sys
 from ackermann_msgs.msg import AckermannDrive
-from std_msgs.msg import Int64
-import pid
+from std_msgs.msg import Int64, Bool
+from pid import *
 PUBLISH_TOPIC = 'auto_drive'
 SUB_TOPIC = 'error'
 DMS_TOPIC = "dead_mans_switch"
@@ -12,13 +12,12 @@ DMS_TOPIC = "dead_mans_switch"
 class PIDNode:
 
     def __init__(self):
+        self.speed = rospy.get_param("pid/speed", 0.46)
+        self.Kp = rospy.get_param("pid/kp", 5)
+        self.Ki = rospy.get_param("pid/ki", 0)
+        self.Kd = rospy.get_param("pid/kd", 0)
 
-        self.speed = rospy.get_param("pid/speed", 0.4)
-        self.Kp = rospy.get_param("pid/Kp", 2)
-        self.Ki = rospy.get_param("pid/Ki", 0)
-        self.Kd = rospy.get_param("pid/Kd", 0)
-
-        self.pid = Pid(Kp, Ki, Kd)
+        self.pid = PID(self.Kp, self.Ki, self.Kd)
 
 
         rospy.init_node('pid', anonymous=True)
@@ -34,19 +33,19 @@ class PIDNode:
 
         error = data.data / 1000.0
         steering_angle = self.pid.update(error)
-
+        print "steering angle", steering_angle
 
         # Construct the message
         ack = AckermannDrive()
         ack.steering_angle = steering_angle
-        ack.speed = this.speed
+        ack.speed = self.speed
 
         self.pub.publish(ack)
 
     def dmsCallback(self, data):
         dms = data.data
         if not dms:
-            pid.clear()
+            self.pid.clear()
 
 
 if __name__ == '__main__':
