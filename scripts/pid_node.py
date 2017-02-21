@@ -12,10 +12,10 @@ DMS_TOPIC = "dead_mans_switch"
 class PIDNode:
 
     def __init__(self):
-        self.speed = rospy.get_param("pid/speed", 0.46)
-        self.Kp = rospy.get_param("pid/kp", 5)
-        self.Ki = rospy.get_param("pid/ki", 0)
-        self.Kd = rospy.get_param("pid/kd", 0)
+        self.speed = 0.46
+        self.Kp = 50
+        self.Ki = 0
+        self.Kd = 75
 
         self.pid = PID(self.Kp, self.Ki, self.Kd)
 
