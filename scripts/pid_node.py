@@ -14,8 +14,8 @@ class PIDNode:
     def __init__(self):
         self.speed = 0.46
         self.Kp = 50
-        self.Ki = 0
-        self.Kd = 75
+        self.Ki = 0.6
+        self.Kd = 15
 
         self.pid = PID(self.Kp, self.Ki, self.Kd)
 
@@ -33,7 +33,7 @@ class PIDNode:
 
         error = data.data / 1000.0
         steering_angle = self.pid.update(error)
-
+	print "steering angle", steering_angle
         # Construct the message
         ack = AckermannDrive()
         ack.steering_angle = steering_angle

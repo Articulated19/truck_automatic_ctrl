@@ -14,7 +14,7 @@ class PID:
         self.ITerm = 0
 
         self.last_time = time.time()
-        self.windup_guard = 0.4
+        self.windup_guard = 100.0
 
         self.last_error = 0.0
         self.clear()
