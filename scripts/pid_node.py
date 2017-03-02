@@ -12,8 +12,8 @@ DMS_TOPIC = "dead_mans_switch"
 class PIDNode:
 
     def __init__(self):
-        self.speed = 0.46
-        self.Kp = 50
+        self.speed = 0.53
+        self.Kp = 60#50
         self.Ki = 0.6
         self.Kd = 15
 
