@@ -10,15 +10,9 @@ class Point:
         self.line = None
 
 
-def getLookAheadPoint((backp0x, backp0y), (frontp0x, frontp0y), lookahead):
-	prevV =(frontp0x - backp0x , frontp0y - backp0y)
-	mag = sqrt((frontp0x - backp0x)**2 + (frontp0y - backp0y)**2)
-	nPrevV = tuple( comp/mag for comp in prevV )
-	(x,y) = tuple(comp*lookahead for comp in nPrevV) #the vector from prevToPoint to newPoint
-	x= x+frontp0x
-	y= y+frontp0y
-	return (x,y)
-	
+def getDirection((x1,y1),(x2,y2)):
+    return atan2(x2-x1, y2-y1)
+
 def getLookAheadPoint((x,y),direction, lookahead):
 	#TODO checkwith right coordinate system
 	return (x+lookahead*cos(direction), y+lookahead*sin(direction))

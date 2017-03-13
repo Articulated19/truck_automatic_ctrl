@@ -21,6 +21,7 @@ KI = 0.6
 KD = 15
 WINDUP_GUARD = 100.0
 
+
 class AutoMaster:
     def __init__(self):
         rospy.init_node('auto_master', anonymous=False)
@@ -29,11 +30,15 @@ class AutoMaster:
         self.latest_direction = None
         
         self.last_journey_start = rospy.get_time()
+        
+        self.latest_position_update = None
 
 		
 		self.error_calc = ErrorCalc()
 		
 		self.error_smoothie = ErrorSmoothie(self.error_calc, SMOOTHING_TIME, SMOOTING_DT, LOOKAHEAD)
+        self.prev_error = 0
+        self.prev_dist = 0
 		
 		self.pid = PID(KP, KI, KD, WINDUP_GUARD)
 		
@@ -49,7 +54,7 @@ class AutoMaster:
 
     def startJourneyHandler(self,data):
 		if data.data:
-			if rospy.get_time() - self.last_journey_start > 5 and self.latest_point != None and self.latest_direction != None:
+			if rospy.get_time() - self.last_journey_start > 5 and self.latest_point != None and self.latest_direction != None and rospy.get_time() - self.latest_position_update < 1:
 				
 				rospy.wait_for_service('request_path')
 				try:
@@ -70,7 +75,7 @@ class AutoMaster:
 		
 		response = ReworkPathResponse()
 		
-		if self.latest_point != None and self.latest_direction != None:
+		if self.latest_point != None and self.latest_direction != None and rospy.get_time() - self.latest_position_update < 1:
 			(error, dist) = self.error_calc.calculateError(self.latest_point)
 			if dist == 0:
 				response.has_passed_last_point = True
@@ -102,14 +107,38 @@ class AutoMaster:
         tagid2 = data.tagid2
         cameraid = data.cameraid
         
-        (error, dist, pub, lookaheadPoint, direction) = self.error_smoothie.makeSmoothie(p1, p2, tagid1, tagid2, cameraid)
-        self.processError(error, dist, pub)
-        
-        if lookaheadPoint != None:
-			self.latest_point = lookaheadPoint
+        if (p2 == (0,0) and tagid2==0):
+			print "ONE MESSAGE ZERO*************"
+			#only one tag out
+			error = self.prev_error
+			dist = self.prev_dist
+            
+            self.latest_point = None
+            self.latest_direction = None
+            
+		else:
+			#two tags
+			#front == id 2
+			#back == id 1
+			if tagid1 !=1:
+                tp = p1
+                p1 = p2
+                p2 = tp
+                
+            
+			direction = getDirection(p1,p2)
+            lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
+            error,dist = ec.calculateError(lookAheadPoint)
 			
-		if direction != None:
-			self.latest_direction = direction
+            self.latest_point = p2
+            self.latest_direction = direction
+            self.latest_position_update = rospy.get_time()
+			self.prevError = error
+			self.prevDist = dist
+        
+        
+        smooth_error, pub = self.error_smoothie.makeSmoothie(error, cameraid)
+        self.processError(smooth_error, dist, pub)
         
         
 
@@ -118,11 +147,13 @@ class AutoMaster:
 		d = data.direction
 		lookaheadPoint = getLookAheadPoint(p,d, LOOKAHEAD)
 		
-        (error, dist) = self.error_calc.calculateError(lookaheadPoint)
+        self.latest_point = p
+		self.latest_direction = d
+        
+        error, dist = self.error_calc.calculateError(lookaheadPoint)
         self.processError(error, dist, True) 
         
-		self.latest_point = lookaheadPoint
-		self.latest_direction = d
+		
         
     
     def processError(self, error, dist, pub):

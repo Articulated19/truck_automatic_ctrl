@@ -1,15 +1,9 @@
 #!/usr/bin/env python
 from error_calc import *
 import rospy
-from math import atan
-
-def getDirection((x1,y1), (x2,y2)):
-	if x2 == x1 return None
-	return atan((y2-y1)/(x2-x1))
 
 class ErrorSmoothie:
-	def __init__(self, _error_calc, smoothing_time, smoothing_dt, lookahead):
-		self.ec = _error_calc
+	def __init__(self, smoothing_time, smoothing_dt):
 		self.currentCam = -1
 		self.timeoutCam = False
 		self.timeoutTime= -1
@@ -18,47 +12,14 @@ class ErrorSmoothie:
 		self.lookforToError = False
 		self.iteration = 0
 		self.updateTime = 0
-		self.prevError = 0
-		self.prevDist
-		
-		self.lookahead = lookahead
+        
 		self.smoothing_time = smoothing_time #1
 		self.smoothing_dt = smoothing_dt #0.025
 		
 
-	def makeSmoothie(self, p1, p2, tagid1, tagid2, cameraid):
-		if (p2 == (0,0) and tagid2==0):
-			print "ONE MESSAGE ZERO*************"
-			#only one tag out
-			error = self.prevError
-			dist = self.prevDist
-			lookaheadPoint = None
-			direction = None
-		else:
-			#two tags
-			#front == id 2
-			#back == id 1
-			if tagid1 ==1:
-				#nr 1 is back and nr 2 is front
-				lookAheadPoint = getLookAheadPoint(p1,p2,self.lookahead)
-				direction = getDirection(p1,p2)
-				error,dist = ec.calculateError(lookAheadPoint)
-				
-			else:
-				#nr 2 is back and nr 1 is front
-				
-				lookAheadPoint = getLookAheadPoint(p2,p1,self.lookahead)
-				direction = getDirection(p2,p1)
-				error,dist = self.ec.calculateError(lookAheadPoint)
-				
-			
-			if dist == 0:
-				return (-1,0,False, lookaheadPoint)
-			self.prevError = error
-			self.prevDist = dist
-			
-		
-		#look for common camera coverage areas:
+	def makeSmoothie(self, error, cameraid):
+        
+			#look for common camera coverage areas:
 
 		if(self.lookforToError and self.currentCam != cameraid):
 			#calculte camera adjumstment difference
@@ -90,4 +51,4 @@ class ErrorSmoothie:
 			pub = True
 		else:
 			pub = False
-		return (error, dist, pub, lookaheadPoint, direction)
+		return (error, pub)
