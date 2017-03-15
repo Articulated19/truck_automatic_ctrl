@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
 from math import *
-from Queue import Queue
+import spline as s
 
 class Point:
     def __init__(self, x , y):
         self.x = x
         self.y = y
-        self.line = None
+        
+    def __repr__(self):
+        return "(" + str(self.x) + " " + str(self.y) + ")"
 
 
 def getDirection((x1,y1),(x2,y2)):
@@ -24,26 +26,39 @@ def isLeft(p0,p1,p2):
     return ((p2.x - p1.x)*(p0.y - p1.y) - (p2.y - p1.y)*(p0.x - p1.x)) >0 #decides if the error is to the left of centerline or not
     
 class ErrorCalc:
-    def __init__(self, newPath=None):
+    def __init__(self):
 
-        self.queue = Queue()
+        self.path = []
         self.line = (None, None)
         
     def appendPath(self, path):
-        for position in path:
-            self.queue.put(Point(position.x, position.y))
+        
+        pos = [(p.x, p.y) for p in path]
+        
+        l5 = [(p.x, p.y) for p in self.path[-5::]]
+        
+        qpos = s.spline(l5 + pos)
+        
+        self.path = self.path[:-5:]
+        
+        
+        for (x,y) in qpos:
+            self.path.append(Point(x, y))
+        
+        
+        
         if self.line[0] != None and self.line[1] == None:
-            if self.queue.qsize >= 1:
-                self.line = (self.line[0], self.queue.get())
+            if len(self.path) >= 1:
+                self.line = (self.line[0], self.path.pop(0))
         elif self.line == (None,None):
-            if self.queue.qsize == 1:
-                self.line = (self.queue.get(), self.line[1])
-            elif self.queue.qsize >= 2:
-                self.line = (self.queue.get(), self.queue.get())
+            if len(self.path) == 1:
+                self.line = (self.path.pop(0), self.line[1])
+            elif len(self.path) >= 2:
+                self.line = (self.path.pop(0), self.path.pop(0))
         
         
     def reset(self):
-        self.queue = Queue()
+        self.path = []
         self.line = (None, None)
     
     def reworkPath(self, path):
@@ -62,12 +77,12 @@ class ErrorCalc:
             
             
         while self.isAboveEnd(p1,p2,p0):
-            if self.queue.qsize() == 0:
+            if len(self.path) == 0:
                 self.line = (p2,None)
                 return (-1,0)
             
             tempP1=p2    
-            tempP2=self.queue.get()
+            tempP2=self.path.pop(0)
             self.line= (tempP1,tempP2)
             (p1,p2) = self.line
 
@@ -75,9 +90,9 @@ class ErrorCalc:
         
         
         if(isLeft(p0,p1,p2)):
-            return (-value, self.queue.qsize()+1)
+            return (-value, len(self.path)+1)
         else:
-            return (value, self.queue.qsize()+1)
+            return (value, len(self.path)+1)
 
     def isAboveEnd (self,begin, end, p0):
         #checks if a point is passed the end point of a line.
