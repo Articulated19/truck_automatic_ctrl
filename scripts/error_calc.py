@@ -37,7 +37,22 @@ class ErrorCalc:
         
         l5 = [(p.x, p.y) for p in self.path[-5::]]
         
+        r = False
+        if len(l5) <= 4:
+            (a,b) = self.line
+            if a != None and b != None:
+                l5 = [(b.x, b.y)] + l5
+                r = True
+            else:
+                if b == None and a != None:
+                    l5 = [(a.x, a.y)] + l5
+                    r = True
+                
+        
         qpos = s.spline(l5 + pos)
+        
+        if r:
+            qpos = qpos[1::]
         
         self.path = self.path[:-5:]
         
@@ -55,6 +70,9 @@ class ErrorCalc:
                 self.line = (self.path.pop(0), self.line[1])
             elif len(self.path) >= 2:
                 self.line = (self.path.pop(0), self.path.pop(0))
+        
+        print "self.line", self.line
+        print "self.path", self.path
         
         
     def reset(self):
