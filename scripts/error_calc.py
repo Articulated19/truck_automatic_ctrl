@@ -108,9 +108,9 @@ class ErrorCalc:
         
         
         if(isLeft(p0,p1,p2)):
-            return (-value, len(self.path)+1)
-        else:
             return (value, len(self.path)+1)
+        else:
+            return (-value, len(self.path)+1)
 
     def isAboveEnd (self,begin, end, p0):
         #checks if a point is passed the end point of a line.

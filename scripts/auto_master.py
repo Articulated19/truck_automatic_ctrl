@@ -9,13 +9,13 @@ from error_calc import *
 from pid import *
 
 
-DRIVE_SPEED = 0.58
-DRIVE_SPEED_SLOW = 0.45
+DRIVE_SPEED = 0.50
+DRIVE_SPEED_SLOW = 0.47
 
 SMOOTHING_TIME = 1.0
 SMOOTING_DT = 0.025
 
-LOOKAHEAD = 2
+LOOKAHEAD = 400
 
 KP = 60
 KI = 0.6
@@ -67,6 +67,7 @@ class AutoMaster:
                     if resp1.accepted.data:
                         print "accepted"
                         self.error_calc.reset()
+                        self.last_journey_start = rospy.get_time()
                         
                 except rospy.ServiceException, e:
                     print "Service call failed: %s" % e
@@ -119,6 +120,8 @@ class AutoMaster:
         tagid2 = data.tagid2
         cameraid = data.cameraid
         
+        #print "cameraid", cameraid
+        
         if (p2 == (0,0) and tagid2==0):
             print "ONE MESSAGE ZERO*************"
             #only one tag out
@@ -140,32 +143,33 @@ class AutoMaster:
             
             direction = getDirection(p1,p2)
             lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
+            
+            print "lookaheadpoint", lookAheadPoint
+            
+            
+            #print "direction", direction
             error,dist = self.error_calc.calculateError(lookAheadPoint)
             
             self.latest_point = p2
             self.latest_direction = direction
             self.latest_position_update = rospy.get_time()
-            self.prevError = error
-            self.prevDist = dist
+            self.prev_error = error
+            self.prev_dist = dist
         
-        print "lookaheadpoint", lookAheadPoint
-        print "direction", direction
-        print "error", error
-        print "dist", dist
+        
         
         smooth_error, pub = self.error_smoothie.makeSmoothie(error, cameraid)
         
         
-        print "smooth_error", smooth_error
-        print "pub", pub
-        
+        if not pub:
+            return
         self.processError(smooth_error, dist, pub)
         
         
         
 
     def positionHandler(self,data):
-        print "got position", data
+        #print "got position", data
         p = (data.p.x, data.p.y)
         d = data.direction
         lookAheadPoint = getLookAheadPoint(p,d, LOOKAHEAD)
@@ -179,9 +183,9 @@ class AutoMaster:
         
         
         
-        print "lookaheadpoint", lookAheadPoint
-        print "error", error
-        print "dist", dist
+        #print "lookaheadpoint", lookAheadPoint
+        #print "error", error
+        #print "dist", dist
         
         self.processError(error, dist, True) 
         
