@@ -37,9 +37,7 @@ class AutoMaster:
         
         self.error_calc = ErrorCalc()
         
-        self.error_smoothie = ErrorSmoothie(SMOOTHING_TIME, SMOOTING_DT)
-        self.prev_error = 0
-        self.prev_dist = 0
+        self.error_smoothie = ErrorSmoothie(self)
         
         self.pid = PID(KP, KI, KD, WINDUP_GUARD)
         
@@ -47,7 +45,7 @@ class AutoMaster:
         
         self.rework_srv = rospy.Service('rework_path', ReworkPath, self.reworkPathHandler)
 
-        rospy.Subscriber('gv_positions', GulliViewPositions, self.gvPositionsHandler)
+        rospy.Subscriber('gv_positions', GulliViewPositions, self.error_smoothie.gvPositionsHandler)
         rospy.Subscriber('position_and_direction', PositionAndDirection, self.positionHandler)
         rospy.Subscriber('path_append', Path, self.pathAppendHandler)
         rospy.Subscriber('dead_mans_switch', Bool, self.deadMansSwitchHandler)
@@ -113,63 +111,9 @@ class AutoMaster:
         
         
 
-    def gvPositionsHandler(self,data):
-        p1 = (data.p1.x, data.p1.y)
-        p2 = (data.p2.x, data.p2.y)
-        tagid1 = data.tagid1
-        tagid2 = data.tagid2
-        cameraid = data.cameraid
-        
-        #print "cameraid", cameraid
-        
-        if (p2 == (0,0) and tagid2==0):
-            print "ONE MESSAGE ZERO*************"
-            #only one tag out
-            error = self.prev_error
-            dist = self.prev_dist
-            
-            self.latest_point = None
-            self.latest_direction = None
-            
-        else:
-            #two tags
-            #front == id 2
-            #back == id 1
-            if tagid1 !=1:
-                tp = p1
-                p1 = p2
-                p2 = tp
-                
-            
-            direction = getDirection(p1,p2)
-            lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
-            
-            print "lookaheadpoint", lookAheadPoint
-            
-            
-            #print "direction", direction
-            error,dist = self.error_calc.calculateError(lookAheadPoint)
-            
-            self.latest_point = p2
-            self.latest_direction = direction
-            self.latest_position_update = rospy.get_time()
-            self.prev_error = error
-            self.prev_dist = dist
-        
-        
-        
-        smooth_error, pub = self.error_smoothie.makeSmoothie(error, cameraid)
-        
-        
-        if not pub:
-            return
-        self.processError(smooth_error, dist, pub)
-        
-        
         
 
     def positionHandler(self,data):
-        #print "got position", data
         p = (data.p.x, data.p.y)
         d = data.direction
         lookAheadPoint = getLookAheadPoint(p,d, LOOKAHEAD)
@@ -182,17 +126,12 @@ class AutoMaster:
         error, dist = self.error_calc.calculateError(lookAheadPoint)
         
         
-        
-        #print "lookaheadpoint", lookAheadPoint
-        #print "error", error
-        #print "dist", dist
-        
-        self.processError(error, dist, True) 
+        self.processError(error, dist) 
         
         
         
     
-    def processError(self, error, dist, pub):
+    def processError(self, error, dist):
         
         if dist == 0:
             ack = AckermannDrive()
@@ -201,9 +140,6 @@ class AutoMaster:
             self.pub.publish(ack)
         
         else:
-            
-            if pub == False:
-                return
             
             error = error / 1000.0
             steering_angle_cmd = self.pid.update(error)
