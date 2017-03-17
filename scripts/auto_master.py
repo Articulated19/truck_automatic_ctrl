@@ -12,7 +12,7 @@ from pid import *
 DRIVE_SPEED = 0.50
 DRIVE_SPEED_SLOW = 0.47
 
-SMOOTHING_TIME = 1.0
+SMOOTHING_TIME = 5.0#1.0
 SMOOTING_DT = 0.025
 
 LOOKAHEAD = 400
@@ -65,6 +65,7 @@ class AutoMaster:
                     if resp1.accepted.data:
                         print "accepted"
                         self.error_calc.reset()
+                        self.error_smoothie.reset()
                         self.last_journey_start = rospy.get_time()
                         
                 except rospy.ServiceException, e:

@@ -16,6 +16,10 @@ class ErrorSmoothie:
     def __init__(self, automaster):
         self.am = automaster
         
+        self.reset()
+        
+        
+    def reset(self):
         self.current_camera = -1
         self.switch_camera_to = True
         
@@ -27,8 +31,7 @@ class ErrorSmoothie:
         self.last_error = 0
         
         self.error_diff = 0
-        
-        
+    
     def errorSmooth(self):
         
         iterations = (SMOOTHING_TIME/SMOOTING_DT)
@@ -45,6 +48,7 @@ class ErrorSmoothie:
     
         
     def gvPositionsHandler(self, data):
+        print "---"
         print "got pos"
         p1 = (data.p1.x, data.p1.y)
         p2 = (data.p2.x, data.p2.y)
@@ -65,20 +69,27 @@ class ErrorSmoothie:
                 print "one tag"
                 
                 if tagid1 == 1: #only back tag
+                    print "only back tag"
                     self.one_tag_cc = True
                 
                 else: # only front tag
                     print "only front tag"
-                    if self.last_front_point_cc == None or getDistance_(p1, self.last_front_point) < 2:
+                    if self.last_front_point_cc == None or getDistance_(p1, self.last_front_point_cc) < 2:
+                        if self.last_front_point_cc == None:
+                            print "no last front point cc"
+                        else:
+                            print "last fron tpoint too close"
                         la = p1
                     else:
-                        d = getDirection(self.last_point_front_cc, p1)
+                        print "getting direction from last front point"
+                        d = getDirection(self.last_front_point_cc, p1)
                         self.am.latest_direction = d
                         la = getLookAheadPoint(p1,d,LOOKAHEAD)
                     
                     error, dist = self.am.error_calc.calculateError(la)
+                    print "error no smooth", error
                     self.last_error = error
-                    error = error + self.error_diff
+                    error = error - self.error_diff
                     
                     
                     self.last_front_point_cc = p1
@@ -86,6 +97,8 @@ class ErrorSmoothie:
                     
                     self.am.latest_point = p1
                     self.am.latest_position_update = rospy.get_time()
+                    print "dist", dist
+                    print "processed error", error
                     self.am.processError(error, dist)
                     
                     
@@ -104,13 +117,18 @@ class ErrorSmoothie:
                 error,dist = self.am.error_calc.calculateError(lookAheadPoint)
                 self.last_error = error
                 
-                error = error + self.error_diff
+                print "error, no smooth", error
+                
+                error = error - self.error_diff
                 
                 self.latest_front_point_cc = p2
                 
                 self.am.latest_point = p2
                 self.am.latest_direction = direction
                 self.am.latest_position_update = rospy.get_time()
+                
+                print "dist", dist
+                print "processed error", error
                 self.am.processError(error, dist)
         
         else:
@@ -128,9 +146,15 @@ class ErrorSmoothie:
                     print "only front tag"
                     if self.one_tag_cc:
                         print "self.one_tag_cc = true"
+                        print "switching to camera " + str(cameraid)
                         if self.last_front_point_nc == None or getDistance_(self.last_front_point_nc, p1) < 2:
+                            if self.last_front_point_nc == None:
+                                print "no last front point nc"
+                            else:
+                                print "last front point too close"
                             la = p1
                         else:
+                            print "getting dir from last front point, nc"
                             dd = getDirection(self.last_front_point_nc, p1)
                             self.am.latest_direction = dd
                             la = getLookAheadPoint(p1, dd, LOOKAHEAD)
@@ -138,6 +162,7 @@ class ErrorSmoothie:
                         
                         error, dist = self.am.error_calc.calculateError(la)
                         
+                        print "new error", error
                         self.error_diff = error - self.last_error
                         print "error_diff", self.error_diff
                         self.last_error = error
@@ -151,20 +176,23 @@ class ErrorSmoothie:
                         
                         self.switch_camera_to = False
                         
-                        print "switch camera to", self.switch_camera_to
                         
                         Thread(target = self.errorSmooth).start()
-                        Timer(5.0, self.setSwitchCameraTO).start()
+                        Timer(10.0, self.setSwitchCameraTO).start()
                         #start 2 timers/threads
                         
                         self.am.latest_point = p1
                         self.am.latest_position_update = rospy.get_time()
                         
                         
-                        error = error + self.error_diff
+                        error = error - self.error_diff
+                        
+                        print "dist", dist
+                        print "processed error", error
                         self.am.processError(error, dist)
                         
                     else:
+                        print "self.one_tag_cc = false"
                         self.last_front_point_nc = p1
                         
                     
@@ -173,7 +201,7 @@ class ErrorSmoothie:
                 
                 print "two tags"
                 
-                print "switch camera to", self.switch_camera_to
+                print "switching to camera " + str(cameraid)
                 if tagid1 !=1:
                     tp = p1
                     p1 = p2
@@ -182,8 +210,10 @@ class ErrorSmoothie:
                 direction = getDirection(p1,p2)
                 lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
                 
-                
                 error,dist = self.am.error_calc.calculateError(lookAheadPoint)
+                
+                
+                print "new error", error
                 
                 self.error_diff = error - self.last_error
                 
@@ -197,16 +227,18 @@ class ErrorSmoothie:
                 
                 self.switch_camera_to = False
                 
-                print "switch camera to", self.switch_camera_to
+                
                 Thread(target = self.errorSmooth).start()
-                Timer(5.0, self.setSwitchCameraTO).start()
+                Timer(10.0, self.setSwitchCameraTO).start()
                 
                 self.am.latest_point = p2
                 self.am.latest_direction = direction
                 self.am.latest_position_update = rospy.get_time()
                 
                 
-                error = error + self.error_diff
+                error = error - self.error_diff
+                
+                print "processed error", error
                 self.am.processError(error, dist)
                 
                 

@@ -91,13 +91,13 @@ class ErrorCalc:
         (p1,p2) = self.line
         
         if p2 == None:
-            return (-1,0)
+            return (0,0)
             
             
         while self.isAboveEnd(p1,p2,p0):
             if len(self.path) == 0:
                 self.line = (p2,None)
-                return (-1,0)
+                return (0,0)
             
             tempP1=p2    
             tempP2=self.path.pop(0)
