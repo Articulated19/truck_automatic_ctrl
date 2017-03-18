@@ -85,7 +85,7 @@ class ErrorSmoothie:
                         print "getting direction from last front point"
                         d = getDirection(self.last_front_point_cc, p1)
                         self.am.latest_direction = d
-                        la = getLookAheadPoint(p1,d,LOOKAHEAD)
+                        la = getLookAheadPoint(p1,d,LOOKAHEAD/4)
                     
                     error, dist = self.am.error_calc.calculateError(la)
                     print "error no smooth", error
@@ -158,7 +158,7 @@ class ErrorSmoothie:
                             print "getting dir from last front point, nc"
                             dd = getDirection(self.last_front_point_nc, p1)
                             self.am.latest_direction = dd
-                            la = getLookAheadPoint(p1, dd, LOOKAHEAD)
+                            la = getLookAheadPoint(p1, dd, LOOKAHEAD/4)
                         
                         
                         error, dist = self.am.error_calc.calculateError(la)
@@ -179,7 +179,7 @@ class ErrorSmoothie:
                         
                         
                         Thread(target = self.errorSmooth).start()
-                        Timer(10.0, self.setSwitchCameraTO).start()
+                        Timer(3.0, self.setSwitchCameraTO).start()
                         #start 2 timers/threads
                         
                         self.am.latest_point = p1
@@ -230,7 +230,7 @@ class ErrorSmoothie:
                 
                 
                 Thread(target = self.errorSmooth).start()
-                Timer(10.0, self.setSwitchCameraTO).start()
+                Timer(3.0, self.setSwitchCameraTO).start()
                 
                 self.am.latest_point = p2
                 self.am.latest_direction = direction

@@ -9,10 +9,10 @@ from error_calc import *
 from pid import *
 
 
-DRIVE_SPEED = 0.50
-DRIVE_SPEED_SLOW = 0.47
+DRIVE_SPEED = 0.51
+DRIVE_SPEED_SLOW = 0.43
 
-SMOOTHING_TIME = 5.0#1.0
+SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
 LOOKAHEAD = 400
@@ -146,7 +146,7 @@ class AutoMaster:
             error = error / 1000.0
             steering_angle_cmd = self.pid.update(error)
             
-            if dist < 50:
+            if dist < 40:
                 speed_cmd = DRIVE_SPEED_SLOW
             else:
                 speed_cmd = DRIVE_SPEED

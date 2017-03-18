@@ -55,7 +55,7 @@ class ErrorCalc:
                     l5 = [(a.x, a.y)] + l5
                     r = True
                 
-        
+        print "l5", l5
         qpos = s.spline(l5 + pos)
         
         if finish:
