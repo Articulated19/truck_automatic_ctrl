@@ -2,6 +2,7 @@
 
 from math import *
 import spline as s
+from auto_master import LOOKAHEAD
 
 class Point:
     def __init__(self, x , y):
@@ -35,6 +36,12 @@ class ErrorCalc:
         
         pos = [(p.x, p.y) for p in path]
         
+        finish = False
+        if pos[-1] == (-1,-1):
+            pos.pop()
+            finish = True
+            
+        
         l5 = [(p.x, p.y) for p in self.path[-5::]]
         
         r = False
@@ -50,6 +57,12 @@ class ErrorCalc:
                 
         
         qpos = s.spline(l5 + pos)
+        
+        if finish:
+            d = getDirection(qpos[-2], qpos[-1])
+            la = getLookAheadPoint(qpos[-1], d, LOOKAHEAD*0.75)
+            qpos.append(la)
+        
         
         if r:
             qpos = qpos[1::]

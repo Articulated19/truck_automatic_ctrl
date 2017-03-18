@@ -34,12 +34,12 @@ class ErrorSmoothie:
     
     def errorSmooth(self):
         
-        iterations = (SMOOTHING_TIME/SMOOTING_DT)
+        iterations = (SMOOTHING_TIME/SMOOTHING_DT)
         de = self.error_diff / iterations
         
         for i in range(int(iterations)):
             self.error_diff -= de
-            time.sleep(SMOOTING_DT)
+            time.sleep(SMOOTHING_DT)
         self.error_diff = 0
         
     def setSwitchCameraTO(self):
@@ -70,6 +70,7 @@ class ErrorSmoothie:
                 
                 if tagid1 == 1: #only back tag
                     print "only back tag"
+                    #maybe use normal error here
                     self.one_tag_cc = True
                 
                 else: # only front tag

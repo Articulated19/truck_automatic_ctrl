@@ -13,7 +13,7 @@ DRIVE_SPEED = 0.50
 DRIVE_SPEED_SLOW = 0.47
 
 SMOOTHING_TIME = 5.0#1.0
-SMOOTING_DT = 0.025
+SMOOTHING_DT = 0.025
 
 LOOKAHEAD = 400
 
@@ -93,6 +93,7 @@ class AutoMaster:
                 response.startposition = Position(self.latest_point[0], self.latest_point[1])
                 response.startangle = self.latest_direction
                 self.error_calc.reset()
+                self.error_smoothie.reset()
                 
                 ack = AckermannDrive()
                 ack.steering_angle = 0
