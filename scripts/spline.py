@@ -4,9 +4,9 @@ from scipy import interpolate
 
 def spline(positions): #positions = [(x1, y1), (x2, y2), (x3, y3)]
     if len(positions) <= 3:
+        print "cant spline less than 4 positions"
         return positions
     
-    print "spline: positions = ", positions
     
     xs,ys = zip(*positions)
     xs = np.array(xs)

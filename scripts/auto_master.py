@@ -7,7 +7,9 @@ from custom_msgs.msg import *
 from custom_msgs.srv import *
 from error_calc import *
 from pid import *
+from geometry import *
 
+SWITCH_CAMERA_COOLDOWN = 3
 
 DRIVE_SPEED = 0.51
 DRIVE_SPEED_SLOW = 0.43
@@ -16,6 +18,12 @@ SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
 LOOKAHEAD = 400
+ONLY_FRONT_TAG_LOOKAHEAD = 100
+ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
+
+JOURNEY_START_REQUEST_COOLDOWN = 5
+REWORK_POS_UPDATE_COOLDOWN = JOURNEY_START_POS_UPDATE_COOLDOWN = 0.5
+SLOWDOWN_DISTANCE = 40
 
 KP = 60
 KI = 0.6
@@ -51,10 +59,39 @@ class AutoMaster:
         rospy.Subscriber('dead_mans_switch', Bool, self.deadMansSwitchHandler)
         rospy.Subscriber('start_journey', Bool, self.startJourneyHandler)
 
+    
+    def updateLatest(self, point = None, direction = None):
+        if point != None:
+            self.latest_point = point
+        if direction != None:
+            self.latest_direction = direction
+            
+        self.latest_position_update = rospy.get_time()
+    
     def startJourneyHandler(self,data):
-        print "start journey request"
+        print "got journey request"
         if data.data:
-            if rospy.get_time() - self.last_journey_start > 5 and self.latest_point != None and self.latest_direction != None and rospy.get_time() - self.latest_position_update < 100:  #100 sec just for testing
+            
+            sj = True
+            
+            if rospy.get_time() - self.last_journey_start < 5:
+                print "chill with the requests bro, last one less than 5 sec ago"
+                sj = False
+            
+            if self.latest_point == None:
+                print "no latest point"
+                sj = False
+            
+            if self.latest_direction == None:
+                print "no latest direction"
+                sj = False
+                
+            if rospy.get_time() - self.latest_position_update >= JOURNEY_START_POS_UPDATE_COOLDOWN:  #100 sec just for testing
+                print "latest position update was ages ago"
+                sj = False
+            
+        
+            if sj:
                 print "waiting for service..."
                 rospy.wait_for_service('request_path')
                 print "service available"
@@ -63,7 +100,7 @@ class AutoMaster:
                     (x,y) = self.latest_point
                     resp1 = pr(Position(x,y), self.latest_direction)
                     if resp1.accepted.data:
-                        print "accepted"
+                        print "service accepted, starting journey"
                         self.error_calc.reset()
                         self.error_smoothie.reset()
                         self.last_journey_start = rospy.get_time()
@@ -79,14 +116,21 @@ class AutoMaster:
         
         response = ReworkPathResponse()
         
+        c = True
+        
         if self.latest_point == None:
             print "no latest point"
+            c = False
+            
         if self.latest_direction == None:
             print "no latest_direction"
-        if rospy.get_time() - self.latest_position_update >= 100:
+            c = False
+            
+        if rospy.get_time() - self.latest_position_update >= REWORK_POS_UPDATE_COOLDOWN: # 100 just for testing
             print "no recent position update"
+            c = False
         
-        if self.latest_point != None and self.latest_direction != None and rospy.get_time() - self.latest_position_update < 100: #100 just for testing
+        if c:
             (error, dist) = self.error_calc.calculateError(self.latest_point)
             if dist == 0:
                 response.has_passed_last_point = Bool(True)
@@ -107,11 +151,6 @@ class AutoMaster:
             
         return response
             
-                
-            
-        
-        
-        
 
         
 
@@ -121,9 +160,7 @@ class AutoMaster:
         lookAheadPoint = getLookAheadPoint(p,d, LOOKAHEAD)
         
         
-        self.latest_point = p
-        self.latest_direction = d
-        self.latest_position_update = rospy.get_time()
+        self.updateLatest(p, d)
         
         error, dist = self.error_calc.calculateError(lookAheadPoint)
         
@@ -135,33 +172,34 @@ class AutoMaster:
     
     def processError(self, error, dist):
         
+        with open('b_bad.txt', 'a') as f:
+            f.write(str(error) + " " + str(dist) + "\n")
+        
         if dist == 0:
-            ack = AckermannDrive()
-            ack.steering_angle = 0
-            ack.speed = 0
-            self.pub.publish(ack)
+            steering_angle_cmd = 0
+            speed_cmd = 0
         
         else:
             
             error = error / 1000.0
             steering_angle_cmd = self.pid.update(error)
             
-            if dist < 40:
+            if dist < SLOWDOWN_DISTANCE:
                 speed_cmd = DRIVE_SPEED_SLOW
             else:
                 speed_cmd = DRIVE_SPEED
                 
-            ack = AckermannDrive()
-            ack.steering_angle = steering_angle_cmd
-            ack.speed = speed_cmd
-            self.pub.publish(ack)
+        ack = AckermannDrive()
+        ack.steering_angle = steering_angle_cmd
+        ack.speed = speed_cmd
+        self.pub.publish(ack)
             
         
         
         
     
     def pathAppendHandler(self,data):
-        print "path appended"
+        print "appending path.."
         self.error_calc.appendPath(data.path)
 
     def deadMansSwitchHandler(self,data):
