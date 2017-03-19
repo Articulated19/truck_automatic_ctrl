@@ -14,18 +14,24 @@ SWITCH_CAMERA_COOLDOWN = 3
 DRIVE_SPEED = 0.51
 DRIVE_SPEED_SLOW = 0.43
 
+DRIVE_SPEED_TRAILER = 0.56
+DRIVE_SPEED_TRAILER_SLOW = 0.51
+
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
 LOOKAHEAD = 400
-ONLY_FRONT_TAG_LOOKAHEAD = 100
+
+GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
+
+ONLY_FRONT_TAG_LOOKAHEAD = LOOKAHEAD * 0.25
 ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
 
 JOURNEY_START_REQUEST_COOLDOWN = 5
 REWORK_POS_UPDATE_COOLDOWN = JOURNEY_START_POS_UPDATE_COOLDOWN = 0.5
 SLOWDOWN_DISTANCE = 40
 
-KP = 60
+KP = 80
 KI = 0.6
 KD = 15
 WINDUP_GUARD = 100.0
@@ -35,6 +41,15 @@ class AutoMaster:
     def __init__(self):
         rospy.init_node('auto_master', anonymous=False)
         
+        if rospy.get_param('auto_master/trailer', True):
+            self.speed = DRIVE_SPEED_TRAILER
+            self.speed_slow = DRIVE_SPEED_TRAILER_SLOW
+            print "trailer"
+        else:
+            self.speed = DRIVE_SPEED
+            self.speed_slow = DRIVE_SPEED_SLOW
+        
+        
         self.latest_point = None
         self.latest_direction = None
         
@@ -42,6 +57,7 @@ class AutoMaster:
         
         self.latest_position_update = 0
 
+        
         
         self.error_calc = ErrorCalc()
         
@@ -58,6 +74,8 @@ class AutoMaster:
         rospy.Subscriber('path_append', Path, self.pathAppendHandler)
         rospy.Subscriber('dead_mans_switch', Bool, self.deadMansSwitchHandler)
         rospy.Subscriber('start_journey', Bool, self.startJourneyHandler)
+        
+        print "waiting for journey start cmd"
 
     
     def updateLatest(self, point = None, direction = None):
@@ -69,7 +87,7 @@ class AutoMaster:
         self.latest_position_update = rospy.get_time()
     
     def startJourneyHandler(self,data):
-        print "got journey request"
+        print "got journey start cmd"
         if data.data:
             
             sj = True
@@ -172,9 +190,6 @@ class AutoMaster:
     
     def processError(self, error, dist):
         
-        with open('b_bad.txt', 'a') as f:
-            f.write(str(error) + " " + str(dist) + "\n")
-        
         if dist == 0:
             steering_angle_cmd = 0
             speed_cmd = 0
@@ -185,9 +200,10 @@ class AutoMaster:
             steering_angle_cmd = self.pid.update(error)
             
             if dist < SLOWDOWN_DISTANCE:
-                speed_cmd = DRIVE_SPEED_SLOW
+                
+                speed_cmd = self.speed_slow
             else:
-                speed_cmd = DRIVE_SPEED
+                speed_cmd = self.speed
                 
         ack = AckermannDrive()
         ack.steering_angle = steering_angle_cmd

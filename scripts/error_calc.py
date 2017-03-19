@@ -2,7 +2,7 @@
 
 from math import *
 import spline as s
-from auto_master import LOOKAHEAD
+from auto_master import *
 from geometry import *
 
 class ErrorCalc:
@@ -50,7 +50,7 @@ class ErrorCalc:
             print "finish appended"
             nl, last = spl_pos[-2:]
             d = getDirection(nl, last)
-            la = getLookAheadPoint(last, d, LOOKAHEAD*0.75)
+            la = getLookAheadPoint(last, d, GOAL_LOOKAHEAD)
             spl_pos.append(la)
         
         #remove points used for splining to make room for result
