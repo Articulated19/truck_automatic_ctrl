@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   ackermann_msgs
   custom_msgs
+  std_srvs
 )
 
 ## System dependencies are found with CMake's conventions

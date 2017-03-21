@@ -4,7 +4,7 @@ from ackermann_msgs.msg import AckermannDrive
 from errorsmoothie import *
 from std_msgs.msg import Bool
 from custom_msgs.msg import *
-from custom_msgs.srv import *
+from std_srvs.msg import Trigger
 from error_calc import *
 from pid import *
 from geometry import *
@@ -28,7 +28,6 @@ ONLY_FRONT_TAG_LOOKAHEAD = LOOKAHEAD * 0.25
 ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
 
 JOURNEY_START_REQUEST_COOLDOWN = 5
-REWORK_POS_UPDATE_COOLDOWN = JOURNEY_START_POS_UPDATE_COOLDOWN = 0.5
 SLOWDOWN_DISTANCE = 40
 
 KP = 80
@@ -50,12 +49,9 @@ class AutoMaster:
             self.speed_slow = DRIVE_SPEED_SLOW
         
         
-        self.latest_point = None
-        self.latest_direction = None
         
         self.last_journey_start = 0
         
-        self.latest_position_update = 0
 
         
         
@@ -65,9 +61,10 @@ class AutoMaster:
         
         self.pid = PID(KP, KI, KD, WINDUP_GUARD)
         
-        self.pub = rospy.Publisher('auto_drive', AckermannDrive, queue_size=10)
+        self.drive_publisher = rospy.Publisher('auto_drive', AckermannDrive, queue_size=10)
+        self.position_publisher = rospy.Publisher('truck_state', PositionAndDirection, queue_size=10)
         
-        self.rework_srv = rospy.Service('rework_path', ReworkPath, self.reworkPathHandler)
+        rospy.Subscriber('rework_path', Path, self.reworkPathHandler)
 
         rospy.Subscriber('gv_positions', GulliViewPositions, self.error_smoothie.gvPositionsHandler)
         rospy.Subscriber('position_and_direction', PositionAndDirection, self.positionHandler)
@@ -79,50 +76,46 @@ class AutoMaster:
 
     
     def updateLatest(self, point = None, direction = None):
+        m = PositionAndDirection()
+        
         if point != None:
-            self.latest_point = point
+            x,y = point
+            m.p = Position(x,y)
+        else:
+            m.p = Position(-1,-1)
+        
+        
         if direction != None:
-            self.latest_direction = direction
-            
-        self.latest_position_update = rospy.get_time()
-    
+            m.direction = direction
+        else:
+            m.direction = -1
+        
+        self.position_publisher.publish(m)
+        
+        
     def startJourneyHandler(self,data):
         print "got journey start cmd"
         if data.data:
             
-            sj = True
             
             if rospy.get_time() - self.last_journey_start < 5:
                 print "chill with the requests bro, last one less than 5 sec ago"
-                sj = False
-            
-            if self.latest_point == None:
-                print "no latest point"
-                sj = False
-            
-            if self.latest_direction == None:
-                print "no latest direction"
-                sj = False
-                
-            if rospy.get_time() - self.latest_position_update >= JOURNEY_START_POS_UPDATE_COOLDOWN:  #100 sec just for testing
-                print "latest position update was ages ago"
-                sj = False
             
         
-            if sj:
+            else:
                 print "waiting for service..."
                 rospy.wait_for_service('request_path')
                 print "service available"
                 try:
-                    pr = rospy.ServiceProxy('request_path', PathRequest)
-                    (x,y) = self.latest_point
-                    resp1 = pr(Position(x,y), self.latest_direction)
-                    if resp1.accepted.data:
+                    rp = rospy.ServiceProxy('request_path', Trigger)
+                    resp = rp()
+                    if resp.success.data:
                         print "service accepted, starting journey"
                         self.error_calc.reset()
                         self.error_smoothie.reset()
                         self.last_journey_start = rospy.get_time()
-                        
+                    else:
+                        print resp.message.data
                 except rospy.ServiceException, e:
                     print "Service call failed: %s" % e
                 
@@ -132,44 +125,6 @@ class AutoMaster:
         path = data.new_path.path
         self.error_calc.reworkPath(path)
         
-        response = ReworkPathResponse()
-        
-        c = True
-        
-        if self.latest_point == None:
-            print "no latest point"
-            c = False
-            
-        if self.latest_direction == None:
-            print "no latest_direction"
-            c = False
-            
-        if rospy.get_time() - self.latest_position_update >= REWORK_POS_UPDATE_COOLDOWN: # 100 just for testing
-            print "no recent position update"
-            c = False
-        
-        if c:
-            (error, dist) = self.error_calc.calculateError(self.latest_point)
-            if dist == 0:
-                response.has_passed_last_point = Bool(True)
-                response.startposition = Position(self.latest_point[0], self.latest_point[1])
-                response.startangle = self.latest_direction
-                self.error_calc.reset()
-                self.error_smoothie.reset()
-                
-                ack = AckermannDrive()
-                ack.steering_angle = 0
-                ack.speed = 0
-                self.pub.publish(ack)
-                
-            else:
-                response.has_passed_last_point = Bool(False)
-        else:
-            response.has_passed_last_point = Bool(False)
-            
-        return response
-            
-
         
 
     def positionHandler(self,data):
@@ -208,7 +163,7 @@ class AutoMaster:
         ack = AckermannDrive()
         ack.steering_angle = steering_angle_cmd
         ack.speed = speed_cmd
-        self.pub.publish(ack)
+        self.drive_publisher.publish(ack)
             
         
         
