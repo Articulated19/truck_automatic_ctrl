@@ -27,7 +27,7 @@ GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 ONLY_FRONT_TAG_LOOKAHEAD = LOOKAHEAD * 0.25
 ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
 
-JOURNEY_START_REQUEST_COOLDOWN = 5
+JOURNEY_START_REQUEST_COOLDOWN = 15
 SLOWDOWN_DISTANCE = 40
 
 KP = 80
@@ -43,7 +43,6 @@ class AutoMaster:
         if rospy.get_param('auto_master/trailer', True):
             self.speed = DRIVE_SPEED_TRAILER
             self.speed_slow = DRIVE_SPEED_TRAILER_SLOW
-            print "trailer"
         else:
             self.speed = DRIVE_SPEED
             self.speed_slow = DRIVE_SPEED_SLOW
@@ -98,7 +97,7 @@ class AutoMaster:
         if data.data:
             
             
-            if rospy.get_time() - self.last_journey_start < 5:
+            if rospy.get_time() - self.last_journey_start < JOURNEY_START_REQUEST_COOLDOWN:
                 print "chill with the requests bro, last one less than 5 sec ago"
             
         
