@@ -4,7 +4,7 @@ from ackermann_msgs.msg import AckermannDrive
 from errorsmoothie import *
 from std_msgs.msg import Bool
 from custom_msgs.msg import *
-from std_srvs.msg import Trigger
+from std_srvs.srv import Trigger
 from error_calc import *
 from pid import *
 from geometry import *
