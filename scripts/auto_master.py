@@ -2,7 +2,7 @@
 import rospy
 from ackermann_msgs.msg import AckermannDrive
 from errorsmoothie import *
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 from custom_msgs.msg import *
 from std_srvs.srv import Trigger
 from error_calc import *
@@ -14,13 +14,13 @@ SWITCH_CAMERA_COOLDOWN = 3
 DRIVE_SPEED = 0.51
 DRIVE_SPEED_SLOW = 0.43
 
-DRIVE_SPEED_TRAILER = 0.56
-DRIVE_SPEED_TRAILER_SLOW = 0.51
+DRIVE_SPEED_TRAILER = 0.51#0.56
+DRIVE_SPEED_TRAILER_SLOW = 0.43#0.51
 
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
-LOOKAHEAD = 400
+LOOKAHEAD = 150
 
 GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 
@@ -30,9 +30,9 @@ ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
 JOURNEY_START_REQUEST_COOLDOWN = 15
 SLOWDOWN_DISTANCE = 40
 
-KP = 80
+KP = 100#80
 KI = 0.6
-KD = 15
+KD = 30#15
 WINDUP_GUARD = 100.0
 
 
@@ -51,7 +51,7 @@ class AutoMaster:
         
         self.last_journey_start = 0
         
-
+        self.latest_trailer_angle = 0
         
         
         self.error_calc = ErrorCalc()
@@ -61,21 +61,27 @@ class AutoMaster:
         self.pid = PID(KP, KI, KD, WINDUP_GUARD)
         
         self.drive_publisher = rospy.Publisher('auto_drive', AckermannDrive, queue_size=10)
-        self.position_publisher = rospy.Publisher('truck_state', PositionAndDirection, queue_size=10)
+        self.position_publisher = rospy.Publisher('truck_state', TruckState, queue_size=10)
         
         rospy.Subscriber('rework_path', Path, self.reworkPathHandler)
 
         rospy.Subscriber('gv_positions', GulliViewPositions, self.error_smoothie.gvPositionsHandler)
-        rospy.Subscriber('position_and_direction', PositionAndDirection, self.positionHandler)
+        rospy.Subscriber('position_and_direction', TruckState, self.positionHandler)
         rospy.Subscriber('path_append', Path, self.pathAppendHandler)
         rospy.Subscriber('dead_mans_switch', Bool, self.deadMansSwitchHandler)
         rospy.Subscriber('start_journey', Bool, self.startJourneyHandler)
+        rospy.Subscriber('trailer_sensor', Float32, self.trailerSensorHandler)
         
         print "waiting for journey start cmd"
+        
+        
+    def trailerSensorHandler(self, data):
+        self.updateLatest(trailerAngle = data.data)
 
     
-    def updateLatest(self, point = None, direction = None):
-        m = PositionAndDirection()
+    def updateLatest(self, point = None, direction = None, trailerAngle = None):
+        m = TruckState()
+        
         
         if point != None:
             x,y = point
@@ -85,9 +91,14 @@ class AutoMaster:
         
         
         if direction != None:
-            m.direction = direction
+            m.theta1 = direction
         else:
-            m.direction = -1
+            m.theta1 = -100
+        
+        if trailerAngle != None:
+            m.trailerangle = trailerAngle
+        else:
+            m.trailerangle = -100
         
         self.position_publisher.publish(m)
         
@@ -108,13 +119,13 @@ class AutoMaster:
                 try:
                     rp = rospy.ServiceProxy('request_path', Trigger)
                     resp = rp()
-                    if resp.success.data:
+                    if resp.success:
                         print "service accepted, starting journey"
                         self.error_calc.reset()
                         self.error_smoothie.reset()
                         self.last_journey_start = rospy.get_time()
                     else:
-                        print resp.message.data
+                        print resp.message
                 except rospy.ServiceException, e:
                     print "Service call failed: %s" % e
                 
@@ -170,6 +181,7 @@ class AutoMaster:
     
     def pathAppendHandler(self,data):
         print "appending path.."
+        print data.path
         self.error_calc.appendPath(data.path)
 
     def deadMansSwitchHandler(self,data):
