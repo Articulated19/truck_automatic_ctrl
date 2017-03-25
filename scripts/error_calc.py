@@ -78,6 +78,9 @@ class ErrorCalc:
             elif pathLength >= 2:
                 self.line = (self.path.pop(0), self.path.pop(0))
         
+
+
+
         
         
     def reset(self):
@@ -88,6 +91,14 @@ class ErrorCalc:
         self.reset()
         self.appendPath(path)
     
+    def getPath(self):
+        r = []
+        l1,l2 = self.line
+        if l1 != None:
+            r.append(l1)
+        if l2 != None:
+            r.append(l2)
+        return r + list(self.path)
 
     def calculateError(self, (x, y)):
         p = Point(x,y)

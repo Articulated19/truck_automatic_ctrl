@@ -68,6 +68,7 @@ class AutoMaster:
         self.drive_publisher = rospy.Publisher('auto_drive', AckermannDrive, queue_size=10)
         self.position_publisher = rospy.Publisher('truck_state', TruckState, queue_size=10)
         
+        self.rviz_path_publisher = rospy.Publisher('rviz_path', Path, queue_size=10)
         
         rospy.Subscriber('sim_state', TruckState, self.simStateHandler)
     
@@ -162,7 +163,12 @@ class AutoMaster:
     def reworkPathHandler(self, data):
         path = data.new_path.path
         self.error_calc.reworkPath(path)
+
+        p = self.error_calc.getPath()
+        ms = Path([Position(x,y) for x,y in p])
+        self.rviz_path_publisher.publish(ms)
         
+
         
 
     def simStateHandler(self,data):
@@ -216,6 +222,11 @@ class AutoMaster:
         print "appending path.."
         print data.path
         self.error_calc.appendPath(data.path)
+
+        
+        p = self.error_calc.getPath()
+        ms = Path([Position(x,y) for x,y in p])
+        self.rviz_path_publisher.publish(ms)
 
     def deadMansSwitchHandler(self,data):
         if not data.data:
