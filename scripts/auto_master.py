@@ -2,12 +2,13 @@
 import rospy
 from ackermann_msgs.msg import AckermannDrive
 from errorsmoothie import *
-from std_msgs.msg import Bool, Float32
+from std_msgs.msg import *
 from custom_msgs.msg import *
-from std_srvs.srv import Trigger
+from custom_msgs.srv import *
 from error_calc import *
 from pid import *
 from geometry import *
+from math import *
 
 SWITCH_CAMERA_COOLDOWN = 3
 
@@ -20,7 +21,7 @@ DRIVE_SPEED_TRAILER_SLOW = 0.43#0.51
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
-LOOKAHEAD = 150
+LOOKAHEAD = 500
 
 GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 
@@ -28,11 +29,13 @@ ONLY_FRONT_TAG_LOOKAHEAD = LOOKAHEAD * 0.25
 ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
 
 JOURNEY_START_REQUEST_COOLDOWN = 15
+
+JOURNEY_START_POS_UPDATE_COOLDOWN = 100
 SLOWDOWN_DISTANCE = 40
 
-KP = 100#80
+KP = 80
 KI = 0.6
-KD = 30#15
+KD = 15
 WINDUP_GUARD = 100.0
 
 
@@ -46,14 +49,16 @@ class AutoMaster:
         else:
             self.speed = DRIVE_SPEED
             self.speed_slow = DRIVE_SPEED_SLOW
-        
-        
-        
+
         self.last_journey_start = 0
         
-        self.latest_trailer_angle = 0
+        self.latest_trailer_angle = None
+        self.latest_position = None
+        self.latest_theta1 = None
+        self.latest_position_update = 0
+        self.latest_theta2 = None
         
-        
+
         self.error_calc = ErrorCalc()
         
         self.error_smoothie = ErrorSmoothie(self)
@@ -63,14 +68,16 @@ class AutoMaster:
         self.drive_publisher = rospy.Publisher('auto_drive', AckermannDrive, queue_size=10)
         self.position_publisher = rospy.Publisher('truck_state', TruckState, queue_size=10)
         
-        rospy.Subscriber('rework_path', Path, self.reworkPathHandler)
-
+        
+        rospy.Subscriber('sim_state', TruckState, self.simStateHandler)
+    
         rospy.Subscriber('gv_positions', GulliViewPositions, self.error_smoothie.gvPositionsHandler)
-        rospy.Subscriber('position_and_direction', TruckState, self.positionHandler)
-        rospy.Subscriber('path_append', Path, self.pathAppendHandler)
         rospy.Subscriber('dead_mans_switch', Bool, self.deadMansSwitchHandler)
-        rospy.Subscriber('start_journey', Bool, self.startJourneyHandler)
         rospy.Subscriber('trailer_sensor', Float32, self.trailerSensorHandler)
+
+        rospy.Subscriber('path_append', Path, self.pathAppendHandler)
+        rospy.Subscriber('goal', Position, self.startJourneyHandler)
+        rospy.Subscriber('rework_path', Path, self.reworkPathHandler)
         
         print "waiting for journey start cmd"
         
@@ -80,56 +87,77 @@ class AutoMaster:
 
     
     def updateLatest(self, point = None, direction = None, trailerAngle = None):
-        m = TruckState()
         
         
         if point != None:
-            x,y = point
-            m.p = Position(x,y)
-        else:
-            m.p = Position(-1,-1)
-        
-        
+            self.latest_position = point
         if direction != None:
-            m.theta1 = direction
-        else:
-            m.theta1 = -100
-        
+            self.latest_theta1 = direction
         if trailerAngle != None:
-            m.trailerangle = trailerAngle
+            self.latest_trailer_angle = trailerAngle
+        
+
+        if self.latest_position != None and self.latest_theta1 != None and self.latest_trailer_angle != None:
+            m = TruckState()
+            m.p = Position(*self.latest_position)
+            m.theta1 = self.latest_theta1
+
+            m.theta2 = self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_direction
+
+            self.latest_position_update = rospy.get_time()
+            self.position_publisher.publish(m)
+        
+        
+    def startJourneyHandler(self, data):
+        goal = data.x, data.y
+        sj = True
+        
+        if rospy.get_time() - self.last_journey_start < JOURNEY_START_REQUEST_COOLDOWN:
+            msg +=  "chill with the requests bro, last one less than 5 sec ago" + "\n"
+
+        if self.latest_theta2 == None:
+            msg += "no latest theta2" + "\n"
+            sj = False
+        
+        if self.latest_position == None:
+            msg += "no latest point" + "\n"
+            sj = False
+            
+        if self.latest_theta1 == None:
+            msg += "no latest direction" + "\n"
+            sj = False
+            
+        if rospy.get_time() - self.latest_position_update >= JOURNEY_START_POS_UPDATE_COOLDOWN:  #100 sec just for testing
+            msg += "latest position update was ages ago" + "\n"
+            sj = False
+        
+        if not sj:
+            print msg
         else:
-            m.trailerangle = -100
-        
-        self.position_publisher.publish(m)
-        
-        
-    def startJourneyHandler(self,data):
-        print "got journey start cmd"
-        if data.data:
-            
-            
-            if rospy.get_time() - self.last_journey_start < JOURNEY_START_REQUEST_COOLDOWN:
-                print "chill with the requests bro, last one less than 5 sec ago"
-            
-        
-            else:
-                print "waiting for service..."
-                rospy.wait_for_service('request_path')
-                print "service available"
-                try:
-                    rp = rospy.ServiceProxy('request_path', Trigger)
-                    resp = rp()
-                    if resp.success:
-                        print "service accepted, starting journey"
-                        self.error_calc.reset()
-                        self.error_smoothie.reset()
-                        self.last_journey_start = rospy.get_time()
-                    else:
-                        print resp.message
-                except rospy.ServiceException, e:
-                    print "Service call failed: %s" % e
-                
-                
+            print "waiting for service..."
+            rospy.wait_for_service('request_path')
+            print "service available"
+            try:
+                rp = rospy.ServiceProxy('request_path', RequestPath)
+
+                state = TruckState()
+                state.p = Position(*self.latest_position)
+                state.theta1 = self.latest_theta1
+                state.theta2 = self.latest_theta2
+
+                resp = rp(state, Position(*goal)))
+                if resp.success:
+                    print "service accepted, starting journey"
+                    self.error_calc.reset()
+                    self.pid.clear()
+                    self.error_smoothie.reset()
+                    self.last_journey_start = rospy.get_time()
+                else:
+                    print resp.message
+            except rospy.ServiceException, e:
+                print "Service call failed: %s" % e
+
+
 
     def reworkPathHandler(self, data):
         path = data.new_path.path
@@ -137,18 +165,23 @@ class AutoMaster:
         
         
 
-    def positionHandler(self,data):
+    def simStateHandler(self,data):
         p = (data.p.x, data.p.y)
-        d = data.direction
-        lookAheadPoint = getLookAheadPoint(p,d, LOOKAHEAD)
+        t1 = data.theta1
+        t2 = data.theta2
+
+        if t2 == -1:
+            t2 = None
+
+        lookAheadPoint = getLookAheadPoint(p, t1, LOOKAHEAD-65)
         
         
-        self.updateLatest(p, d)
+        self.updateLatest(p, t1, degrees(t2-t1))
         
         error, dist = self.error_calc.calculateError(lookAheadPoint)
         
         
-        self.processError(error, dist) 
+        self.processError(error, dist)
         
         
         
@@ -187,6 +220,9 @@ class AutoMaster:
     def deadMansSwitchHandler(self,data):
         if not data.data:
             self.pid.clear()
+
+
+
     
 
 if __name__ == '__main__':
