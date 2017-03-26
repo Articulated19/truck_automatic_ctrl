@@ -43,7 +43,9 @@ class AutoMaster:
     def __init__(self):
         rospy.init_node('auto_master', anonymous=False)
         
-        if rospy.get_param('auto_master/trailer', True):
+        self.trailer = rospy.get_param('auto_master/trailer', True):
+
+        if self.trailer:
             self.speed = DRIVE_SPEED_TRAILER
             self.speed_slow = DRIVE_SPEED_TRAILER_SLOW
         else:
@@ -98,7 +100,13 @@ class AutoMaster:
             self.latest_trailer_angle = trailerAngle
         
 
-        if self.latest_position != None and self.latest_theta1 != None and self.latest_trailer_angle != None:
+        if self.latest_position != None and self.latest_theta1 != None:
+
+            if self.trailer and self.latest_trailer_angle == None:
+                return
+            if not self.trailer:
+                self.latest_trailer_angle = 0            
+
             m = TruckState()
             m.p = Position(*self.latest_position)
             m.theta1 = self.latest_theta1
