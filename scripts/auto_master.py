@@ -153,6 +153,7 @@ class AutoMaster:
                     self.pid.clear()
                     self.error_smoothie.reset()
                     self.last_journey_start = rospy.get_time()
+                    self.error_calc.appendPath([state.p])
                 else:
                     print resp.message
             except rospy.ServiceException, e:
@@ -223,7 +224,7 @@ class AutoMaster:
         print data.path
         self.error_calc.appendPath(data.path)
 
-        
+
         p = self.error_calc.getPath()
         ms = Path([Position(x,y) for x,y in p])
         self.rviz_path_publisher.publish(ms)

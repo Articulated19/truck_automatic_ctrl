@@ -7,15 +7,14 @@ MIN_ANGLE = 16
 class Sim:
 
     def __init__(self):
-        
-
 
         rospy.init_node('sim', anonymous=False)
-
 
         rospy.Subscriber('auto_drive', AckermannDrive, self.ackermannHandler)
 
         self.pub = rospy.Publisher('sim_state')
+
+        self.rate = rospy.Rate(50)
 
         self.latest_sim = rospy.get_time()
 
@@ -32,16 +31,12 @@ class Sim:
         steering_angle = data.steering_angle
         speed = data.speed
 
-        rospy.sleep(0.02)
-
         now = rospy.get_time()
         dt = now - self.latest_sim
         self.latest_sim = now
 
-        x, y, t1, t2 = self.sim.processCmd(steering_angle, speed, dt)
+        self.processCmd(steering_angle, speed, dt)
 
-        ts = TruckState(Position(x,y), t1, t2)
-        self.sim_publisher.publish(ts)
 
 
     # Reacting to steering command
@@ -69,11 +64,13 @@ class Sim:
         self.theta1 = next_theta
         self.theta2 = next_theta2
 
-        return (self.x, self.y, self.theta1, self.theta2)
+    def spin(self):
+        while not rospy.is_shutdown():
+            self.rate.sleep()
+            ts = TruckState(Position(self.x, self.y, self.theta1, self.theta2))
+            self.pub.publish(ts)
+
 
 if __name__ == '__main__':
     s = Sim()
-    rospy.sleep(3)
-    s.pub.publish(TruckState(Position(s.x, s.y), s.t1, s.t2))
-    s.pub.publish(TruckState(Position(s.x, s.y), s.t1, s.t2))
-    rospy.spin()
+    s.spin()
