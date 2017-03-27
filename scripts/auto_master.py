@@ -21,7 +21,7 @@ DRIVE_SPEED_TRAILER_SLOW = 0.43#0.51
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
-LOOKAHEAD = 500
+LOOKAHEAD = 400
 
 GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 
@@ -43,7 +43,7 @@ class AutoMaster:
     def __init__(self):
         rospy.init_node('auto_master', anonymous=False)
         
-        self.trailer = rospy.get_param('auto_master/trailer', True):
+        self.trailer = rospy.get_param('auto_master/trailer', True)
 
         if self.trailer:
             self.speed = DRIVE_SPEED_TRAILER
@@ -80,7 +80,7 @@ class AutoMaster:
 
         rospy.Subscriber('path_append', Path, self.pathAppendHandler)
         rospy.Subscriber('goal', Position, self.startJourneyHandler)
-        rospy.Subscriber('rework_path', Path, self.reworkPathHandler)
+        rospy.Subscriber('path_rework', Path, self.reworkPathHandler)
         
         print "waiting for journey start cmd"
         
@@ -111,7 +111,7 @@ class AutoMaster:
             m.p = Position(*self.latest_position)
             m.theta1 = self.latest_theta1
 
-            m.theta2 = self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_direction
+            m.theta2 = self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_theta1
 
             self.latest_position_update = rospy.get_time()
             self.position_publisher.publish(m)
@@ -120,6 +120,8 @@ class AutoMaster:
     def startJourneyHandler(self, data):
         goal = data.x, data.y
         sj = True
+        
+        msg = ""
         
         if rospy.get_time() - self.last_journey_start < JOURNEY_START_REQUEST_COOLDOWN:
             msg +=  "chill with the requests bro, last one less than 5 sec ago" + "\n"
@@ -154,7 +156,7 @@ class AutoMaster:
                 state.theta1 = self.latest_theta1
                 state.theta2 = self.latest_theta2
 
-                resp = rp(state, Position(*goal)))
+                resp = rp(state, Position(*goal))
                 if resp.success:
                     print "service accepted, starting journey"
                     self.error_calc.reset()
@@ -170,11 +172,13 @@ class AutoMaster:
 
 
     def reworkPathHandler(self, data):
-        path = data.new_path.path
+        print "reworked path"
+        path = data.path
         self.error_calc.reworkPath(path)
 
-        p = self.error_calc.getPath()
-        ms = Path([Position(x,y) for x,y in p])
+        
+        pa = self.error_calc.getPath()
+        ms = Path([Position(p.x,p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
         
 
@@ -189,7 +193,6 @@ class AutoMaster:
             t2 = None
 
         lookAheadPoint = getLookAheadPoint(p, t1, LOOKAHEAD-65)
-        
         
         self.updateLatest(p, t1, degrees(t2-t1))
         
@@ -233,8 +236,8 @@ class AutoMaster:
         self.error_calc.appendPath(data.path)
 
 
-        p = self.error_calc.getPath()
-        ms = Path([Position(x,y) for x,y in p])
+        pa = self.error_calc.getPath()
+        ms = Path([Position(p.x,p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
 
     def deadMansSwitchHandler(self,data):

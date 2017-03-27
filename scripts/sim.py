@@ -1,4 +1,7 @@
 from math import *
+import rospy
+from ackermann_msgs.msg import AckermannDrive
+from custom_msgs.msg import *
 MAX_ANGLE = -21
 MIN_ANGLE = 16
 
@@ -12,17 +15,17 @@ class Sim:
 
         rospy.Subscriber('auto_drive', AckermannDrive, self.ackermannHandler)
 
-        self.pub = rospy.Publisher('sim_state')
+        self.pub = rospy.Publisher('sim_state', TruckState, queue_size=10)
 
-        self.rate = rospy.Rate(50)
+        self.rate = rospy.Rate(30)
 
         self.latest_sim = rospy.get_time()
 
         self.lh = 320
         self.lt = 630
 
-        self.x = 1160
-        self.y = 7690
+        self.x = 3250
+        self.y = 5580
         self.theta1 = pi/2
         self.theta2 = pi/2
 
@@ -34,7 +37,8 @@ class Sim:
         now = rospy.get_time()
         dt = now - self.latest_sim
         self.latest_sim = now
-
+        speed = 0
+        steering_angle = 0
         self.processCmd(steering_angle, speed, dt)
 
 
@@ -48,8 +52,8 @@ class Sim:
         elif (steering_angle < MIN_ANGLE):
             steering_angle = MIN_ANGLE
 
-        phi = radians(steering_angle_deg)
-        speed = command.speed * 1000    # Converting from m/s to mm/s
+        phi = radians(steering_angle)
+        speed = speed * 1000    # Converting from m/s to mm/s
 
 
         dd = speed * dt
@@ -61,13 +65,13 @@ class Sim:
 
         self.x = next_x
         self.y = next_y
-        self.theta1 = next_theta
+        self.theta1 = next_theta1
         self.theta2 = next_theta2
 
     def spin(self):
         while not rospy.is_shutdown():
             self.rate.sleep()
-            ts = TruckState(Position(self.x, self.y, self.theta1, self.theta2))
+            ts = TruckState(Position(self.x, self.y), self.theta1, self.theta2)
             self.pub.publish(ts)
 
 
