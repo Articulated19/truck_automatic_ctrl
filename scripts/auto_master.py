@@ -21,7 +21,7 @@ DRIVE_SPEED_TRAILER_SLOW = 0.43#0.51
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
-LOOKAHEAD = 400
+LOOKAHEAD = 500
 
 GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 
@@ -33,9 +33,9 @@ JOURNEY_START_REQUEST_COOLDOWN = 15
 JOURNEY_START_POS_UPDATE_COOLDOWN = 100
 SLOWDOWN_DISTANCE = 40
 
-KP = 80
+KP = 100#80
 KI = 0.6
-KD = 15
+KD = 25#15
 WINDUP_GUARD = 100.0
 
 
@@ -79,7 +79,7 @@ class AutoMaster:
         rospy.Subscriber('trailer_sensor', Float32, self.trailerSensorHandler)
 
         rospy.Subscriber('path_append', Path, self.pathAppendHandler)
-        rospy.Subscriber('goal', Position, self.startJourneyHandler)
+        rospy.Subscriber('truck_goals', Path, self.startJourneyHandler)
         rospy.Subscriber('path_rework', Path, self.reworkPathHandler)
         
         print "waiting for journey start cmd"
@@ -118,7 +118,7 @@ class AutoMaster:
         
         
     def startJourneyHandler(self, data):
-        goal = data.x, data.y
+        goals = data
         sj = True
         
         msg = ""
@@ -156,7 +156,7 @@ class AutoMaster:
                 state.theta1 = self.latest_theta1
                 state.theta2 = self.latest_theta2
 
-                resp = rp(state, Position(*goal))
+                resp = rp(state, goals)
                 if resp.success:
                     print "service accepted, starting journey"
                     self.error_calc.reset()
@@ -185,6 +185,7 @@ class AutoMaster:
         
 
     def simStateHandler(self,data):
+        
         p = (data.p.x, data.p.y)
         t1 = data.theta1
         t2 = data.theta2
@@ -197,7 +198,6 @@ class AutoMaster:
         self.updateLatest(p, t1, degrees(t2-t1))
         
         error, dist = self.error_calc.calculateError(lookAheadPoint)
-        
         
         self.processError(error, dist)
         
@@ -214,6 +214,7 @@ class AutoMaster:
             
             error = error / 1000.0
             steering_angle_cmd = self.pid.update(error)
+            
             
             if dist < SLOWDOWN_DISTANCE:
                 
@@ -233,10 +234,12 @@ class AutoMaster:
     def pathAppendHandler(self,data):
         print "appending path.."
         print data.path
+        print "path before", self.error_calc.getPath()
         self.error_calc.appendPath(data.path)
-
-
+        
         pa = self.error_calc.getPath()
+        
+        print "path after", pa
         ms = Path([Position(p.x,p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
 
