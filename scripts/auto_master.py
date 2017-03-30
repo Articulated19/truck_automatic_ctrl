@@ -33,9 +33,9 @@ JOURNEY_START_REQUEST_COOLDOWN = 15
 JOURNEY_START_POS_UPDATE_COOLDOWN = 100
 SLOWDOWN_DISTANCE = 40
 
-KP = 100#80
-KI = 0.6
-KD = 25#15
+KP = 180
+KI = 0#0.6
+KD = 45
 WINDUP_GUARD = 100.0
 
 
@@ -205,7 +205,6 @@ class AutoMaster:
         
     
     def processError(self, error, dist):
-        
         if dist == 0:
             steering_angle_cmd = 0
             speed_cmd = 0

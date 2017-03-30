@@ -4,7 +4,7 @@ from math import *
 import rospy
 from ackermann_msgs.msg import AckermannDrive
 from custom_msgs.msg import *
-MIN_ANGLE = -21
+MIN_ANGLE = -16
 MAX_ANGLE = 16
 
 
@@ -18,22 +18,33 @@ class Sim:
         rospy.init_node('sim', anonymous=False)
 
         rospy.Subscriber('auto_drive', AckermannDrive, self.ackermannHandler)
+        rospy.Subscriber('sim_reset', TruckState, self.resetHandler)
 
         self.pub = rospy.Publisher('sim_state', TruckState, queue_size=10)
 
-        self.rate = rospy.Rate(30)
+        self.rate = rospy.Rate(50)
 
         self.latest_sim = rospy.get_time()
 
-        self.lh = 320.0
-        self.lt = 630.0
+        self.lh = 270.0
+        self.lt = 620.0
 
         self.x = 3550.0
         self.y = 5580.0
         self.theta1 = pi/2
         self.theta2 = pi/2
 
-
+    
+    def resetHandler(self, data):
+        p = data.p
+        self.theta1 = data.theta1
+        self.theta2 = data.theta2
+        
+        self.x = p.x + (self.lh+self.lt)*cos(self.theta1)
+        self.y = p.y + (self.lh+self.lt)*sin(self.theta1)
+        
+        self.latest_sim = rospy.get_time()
+    
     def ackermannHandler(self, data):
         steering_angle = data.steering_angle
         speed = data.speed

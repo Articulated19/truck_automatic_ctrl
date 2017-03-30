@@ -14,7 +14,9 @@ class ErrorCalc:
         
         
     def appendPath(self, path):
-        
+        if path == []:
+            return
+            
         pos = [(p.x, p.y) for p in path]
         
         
