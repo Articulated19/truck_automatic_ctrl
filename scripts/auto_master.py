@@ -9,6 +9,7 @@ from error_calc import *
 from pid import *
 from geometry import *
 from math import *
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 SWITCH_CAMERA_COOLDOWN = 3
 
@@ -33,7 +34,7 @@ JOURNEY_START_REQUEST_COOLDOWN = 15
 JOURNEY_START_POS_UPDATE_COOLDOWN = 100
 SLOWDOWN_DISTANCE = 40
 
-KP = 180
+KP = 200#180
 KI = 0#0.6
 KD = 45
 WINDUP_GUARD = 100.0
@@ -73,7 +74,8 @@ class AutoMaster:
         self.rviz_path_publisher = rospy.Publisher('rviz_path', Path, queue_size=10)
         
         rospy.Subscriber('sim_state', TruckState, self.simStateHandler)
-    
+        
+        rospy.Subscriber('initialpose', PoseWithCovarianceStamped, self.initPoseCallback)
         rospy.Subscriber('gv_positions', GulliViewPositions, self.error_smoothie.gvPositionsHandler)
         rospy.Subscriber('dead_mans_switch', Bool, self.deadMansSwitchHandler)
         rospy.Subscriber('trailer_sensor', Float32, self.trailerSensorHandler)
@@ -84,7 +86,12 @@ class AutoMaster:
         
         print "waiting for journey start cmd"
         
-        
+    
+    def initPoseCallback(self, data):
+        self.error_calc.reset()
+        self.pid.clear()
+        self.error_smoothie.reset()
+    
     def trailerSensorHandler(self, data):
         self.updateLatest(trailerAngle = data.data)
 
