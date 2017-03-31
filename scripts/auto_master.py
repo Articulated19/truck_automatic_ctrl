@@ -22,7 +22,7 @@ DRIVE_SPEED_TRAILER_SLOW = 0.43#0.51
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
-LOOKAHEAD = 500
+LOOKAHEAD = 350
 
 GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 
@@ -34,9 +34,13 @@ JOURNEY_START_REQUEST_COOLDOWN = 15
 JOURNEY_START_POS_UPDATE_COOLDOWN = 100
 SLOWDOWN_DISTANCE = 40
 
-KP = 200#180
-KI = 0#0.6
-KD = 45
+#KP = 80
+#KI = 0.6
+#KD = 15
+
+KP = 100#200#180
+KI = 0.6#0#0.6
+KD = 15#45
 WINDUP_GUARD = 100.0
 
 
@@ -93,7 +97,7 @@ class AutoMaster:
         self.error_smoothie.reset()
     
     def trailerSensorHandler(self, data):
-        self.updateLatest(trailerAngle = data.data)
+        self.updateLatest(trailerAngle = -data.data)
 
     
     def updateLatest(self, point = None, direction = None, trailerAngle = None):
