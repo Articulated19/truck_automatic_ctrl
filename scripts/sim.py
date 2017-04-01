@@ -5,7 +5,7 @@ import rospy
 from ackermann_msgs.msg import AckermannDrive
 from custom_msgs.msg import *
 MIN_ANGLE = -16
-MAX_ANGLE = 16
+MAX_ANGLE = 20
 
 
 # The simulator
@@ -26,8 +26,8 @@ class Sim:
 
         self.latest_sim = rospy.get_time()
 
-        self.lh = 270.0
-        self.lt = 620.0
+        self.lh = 210.0 #270
+        self.lt = 490.0 #500
 
         self.x = 3550.0
         self.y = 5580.0
@@ -46,6 +46,7 @@ class Sim:
         self.latest_sim = rospy.get_time()
     
     def ackermannHandler(self, data):
+        
         steering_angle = data.steering_angle
         speed = data.speed
 
@@ -79,6 +80,41 @@ class Sim:
         next_theta1 = self.theta1 + (dd * tan(phi)) / self.lh
         
         next_theta2 = self.theta2 + (dd * sin(self.theta1 - self.theta2)) / self.lt
+        
+        a1 = self.theta2 - self.theta1
+        a2 = next_theta2 - next_theta1
+        
+        w1 = 0.165
+        w2 = 0.06
+        w4 = 0.0
+        w5 = 0.0
+        
+        da = a2 - a1
+        if a2 > 0:
+            if da > 0:
+                next_theta2 += da * w4
+            else:
+                next_theta2 += abs(da) * w5
+        else:
+            if da < 0:
+                next_theta2 -= abs(da) * w4
+            else:
+                next_theta2 -= da * w5
+        
+        
+        dt1 = next_theta1 - self.theta1
+        dt2 = next_theta2 - self.theta2
+        alpha = next_theta2 - next_theta1
+        
+        
+        if alpha > 0:
+            next_theta2 += (dt2 * w2 + (-dt1) * w1)
+        else:
+            next_theta2 -= (dt2 * w2 + dt1 * w1)
+
+        
+        
+        
         next_x = self.x + dd * cos(next_theta1)
         next_y = self.y + dd * sin(next_theta1)
 
