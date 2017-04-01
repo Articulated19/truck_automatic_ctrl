@@ -5,7 +5,7 @@ import rospy
 from ackermann_msgs.msg import AckermannDrive
 from custom_msgs.msg import *
 MIN_ANGLE = -16
-MAX_ANGLE = 20
+MAX_ANGLE = 19
 
 
 # The simulator
@@ -29,6 +29,7 @@ class Sim:
         self.lh = 210.0 #270
         self.lt = 490.0 #500
 
+
         self.x = 3550.0
         self.y = 5580.0
         self.theta1 = pi/2
@@ -40,8 +41,8 @@ class Sim:
         self.theta1 = data.theta1
         self.theta2 = data.theta2
         
-        self.x = p.x + (self.lh+self.lt)*cos(self.theta1)
-        self.y = p.y + (self.lh+self.lt)*sin(self.theta1)
+        self.x = p.x + (135 + self.lh+self.lt)*cos(self.theta1)
+        self.y = p.y + (135 + self.lh+self.lt)*sin(self.theta1)
         
         self.latest_sim = rospy.get_time()
     
@@ -84,8 +85,8 @@ class Sim:
         a1 = self.theta2 - self.theta1
         a2 = next_theta2 - next_theta1
         
-        w1 = 0.165
-        w2 = 0.06
+        w1 = 0.0
+        w2 = 0.0
         w4 = 0.0
         w5 = 0.0
         
