@@ -85,8 +85,8 @@ class Sim:
         a1 = self.theta2 - self.theta1
         a2 = next_theta2 - next_theta1
         
-        w1 = 0.0
-        w2 = 0.0
+        w1 = 0.175
+        w2 = 0.09
         w4 = 0.0
         w5 = 0.0
         
