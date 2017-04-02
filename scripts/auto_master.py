@@ -16,8 +16,8 @@ SWITCH_CAMERA_COOLDOWN = 3
 DRIVE_SPEED = 0.51
 DRIVE_SPEED_SLOW = 0.43
 
-DRIVE_SPEED_TRAILER = 0.45#0.56
-DRIVE_SPEED_TRAILER_SLOW = 0.45#0.51
+DRIVE_SPEED_SIM = 0.45
+DRIVE_SPEED_SIM_SLOW = 0.45
 
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
@@ -25,6 +25,7 @@ SMOOTHING_DT = 0.025
 #great pid for truck in lab: la = 350 + 100 , kp= 100, ki = 0.6, kd = 15
 
 LOOKAHEAD = 450
+LOOKAHEAD_SIM = 450
 
 GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 
@@ -33,13 +34,21 @@ ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
 
 JOURNEY_START_REQUEST_COOLDOWN = 15
 
-JOURNEY_START_POS_UPDATE_COOLDOWN = 100
+JOURNEY_START_POS_UPDATE_COOLDOWN = 10
 SLOWDOWN_DISTANCE = 40
 
+MAX_TRAILER_ANGLE = 40.0
+SPEED_INCREASE_COEFFICIENT = 0.5
 
-KP = 200
-KI = 0
+
+KP = 100
+KI = 0.6
 KD = 15
+
+KP_SIM = 200
+KI_SIM = 0
+KD_SIM = 15
+
 
 WINDUP_GUARD = 100.0
 
@@ -48,14 +57,22 @@ class AutoMaster:
     def __init__(self):
         rospy.init_node('auto_master', anonymous=False)
         
-        self.trailer = rospy.get_param('auto_master/trailer', True)
+        self.sim = rospy.get_param('auto_master/sim')
 
-        if self.trailer:
-            self.speed = DRIVE_SPEED_TRAILER
-            self.speed_slow = DRIVE_SPEED_TRAILER_SLOW
+        if self.sim:
+            self.speed = DRIVE_SPEED_SIM
+            self.speed_slow = DRIVE_SPEED_SIM_SLOW
+            self.kp = KP_SIM
+            self.ki = KI_SIM
+            self.kd = KD_SIM
+            self.la_dist = LOOKAHEAD_SIM
         else:
             self.speed = DRIVE_SPEED
             self.speed_slow = DRIVE_SPEED_SLOW
+            self.kp = KP
+            self.ki = KI
+            self.kd = KD
+            self.la_dist = LOOKAHEAD
 
         self.last_journey_start = 0
         
@@ -70,7 +87,7 @@ class AutoMaster:
         
         self.error_smoothie = ErrorSmoothie(self)
         
-        self.pid = PID(KP, KI, KD, WINDUP_GUARD)
+        self.pid = PID(self.kp, self.ki, self.kd, WINDUP_GUARD)
         
         self.drive_publisher = rospy.Publisher('auto_drive', AckermannDrive, queue_size=10)
         self.position_publisher = rospy.Publisher('truck_state', TruckState, queue_size=10)
@@ -113,11 +130,9 @@ class AutoMaster:
 
         if self.latest_position != None and self.latest_theta1 != None:
 
-            if self.trailer and self.latest_trailer_angle == None:
+            if self.latest_trailer_angle == None:
                 return
-            if not self.trailer:
-                self.latest_trailer_angle = 0            
-
+            
             m = TruckState()
             m.p = Position(*self.latest_position)
             m.theta1 = self.latest_theta1
@@ -204,7 +219,7 @@ class AutoMaster:
         if t2 == -1:
             t2 = None
 
-        lookAheadPoint = getLookAheadPoint(p, t1, LOOKAHEAD-65)
+        lookAheadPoint = getLookAheadPoint(p, t1, self.la_dist-65)
         
         self.updateLatest(p, t1, degrees(t2-t1))
         
@@ -231,6 +246,9 @@ class AutoMaster:
                 speed_cmd = self.speed_slow
             else:
                 speed_cmd = self.speed
+            
+            if not self.sim:
+                speed_cmd += abs(self.latest_trailer_angle) * SPEED_INCREASE_COEFFICIENT / MAX_TRAILER_ANGLE
                 
         ack = AckermannDrive()
         ack.steering_angle = steering_angle_cmd
