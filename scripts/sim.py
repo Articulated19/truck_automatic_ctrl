@@ -26,7 +26,7 @@ class Sim:
 
         self.latest_sim = rospy.get_time()
 
-        self.lh = 210.0 #270
+        self.lh = 270.0 #270
         self.lt = 490.0 #500
 
 
@@ -40,6 +40,7 @@ class Sim:
         p = data.p
         self.theta1 = data.theta1
         self.theta2 = data.theta2
+        
         
         self.x = p.x + (135 + self.lh+self.lt)*cos(self.theta1)
         self.y = p.y + (135 + self.lh+self.lt)*sin(self.theta1)
@@ -67,8 +68,10 @@ class Sim:
         # Accounting for maximum and minimum steering angle
         if (steering_angle > MAX_ANGLE):
             steering_angle = MAX_ANGLE
+            print "Max", rospy.get_time()
         elif (steering_angle < MIN_ANGLE):
             steering_angle = MIN_ANGLE
+            print "Min", rospy.get_time()
         
         
         phi = radians(-steering_angle)
@@ -82,42 +85,16 @@ class Sim:
         
         next_theta2 = self.theta2 + (dd * sin(self.theta1 - self.theta2)) / self.lt
         
-        a1 = self.theta2 - self.theta1
-        a2 = next_theta2 - next_theta1
         
-        w1 = 0.175
-        w2 = 0.09
-        w4 = 0.0
-        w5 = 0.0
-        
-        da = a2 - a1
-        if a2 > 0:
-            if da > 0:
-                next_theta2 += da * w4
-            else:
-                next_theta2 += abs(da) * w5
-        else:
-            if da < 0:
-                next_theta2 -= abs(da) * w4
-            else:
-                next_theta2 -= da * w5
-        
-        
-        dt1 = next_theta1 - self.theta1
-        dt2 = next_theta2 - self.theta2
-        alpha = next_theta2 - next_theta1
-        
-        
-        if alpha > 0:
-            next_theta2 += (dt2 * w2 + (-dt1) * w1)
-        else:
-            next_theta2 -= (dt2 * w2 + dt1 * w1)
 
         
+        dx = self.x - self.lh * cos(self.theta1)
+        dy = self.y - self.lh * sin(self.theta1)
         
         
-        next_x = self.x + dd * cos(next_theta1)
-        next_y = self.y + dd * sin(next_theta1)
+        next_x = dx + dd * cos(next_theta1) + self.lh * cos(next_theta1)
+        next_y = dy + dd * sin(next_theta1) + self.lh * sin(next_theta1)
+
 
         self.x = next_x
         self.y = next_y
