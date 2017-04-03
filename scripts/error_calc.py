@@ -10,15 +10,19 @@ class ErrorCalc:
 
         self.path = []
         self.line = (None, None)
+        self.finish = False
+        
         
     def appendPath(self, path):
-        
+        if path == []:
+            return
+            
         pos = [(p.x, p.y) for p in path]
         
-        finish = False
+        
         if pos[-1] == (-1,-1):
             pos.pop()
-            finish = True
+            self.finish = True
             
         
         #last 5 points, used for better splining
@@ -46,7 +50,7 @@ class ErrorCalc:
         
         
         #extend path so truck doesn't stop early due to lookahead
-        if finish:
+        if self.finish:
             print "finish appended"
             nl, last = spl_pos[-2:]
             d = getDirection(nl, last)
@@ -77,17 +81,35 @@ class ErrorCalc:
             
             elif pathLength >= 2:
                 self.line = (self.path.pop(0), self.path.pop(0))
-        
+                
+       
+
+
+
         
         
     def reset(self):
         self.path = []
         self.line = (None, None)
+        self.finish = False
     
     def reworkPath(self, path):
         self.reset()
         self.appendPath(path)
     
+    def getPath(self):
+        r = []
+        l1,l2 = self.line
+        if l1 != None:
+            r.append(l1)
+        if l2 != None:
+            r.append(l2)
+            
+        if self.finish:
+            p = self.path[:-1]
+        else:
+            p = list(self.path)
+        return r + p
 
     def calculateError(self, (x, y)):
         p = Point(x,y)

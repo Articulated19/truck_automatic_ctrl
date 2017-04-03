@@ -93,7 +93,7 @@ class ErrorSmoothie:
                     
                     self.last_front_point_cc = p1
                     
-                    self.am.updateLatest(p1, direction)
+                    self.am.updateLatest(getLookAheadPoint(p1, direction, 65-100), direction)
                     
                     self.am.processError(error, dist)
                     
@@ -117,7 +117,7 @@ class ErrorSmoothie:
                 
                 self.latest_front_point_cc = p2
                 
-                self.am.updateLatest(p2, direction)
+                self.am.updateLatest(getLookAheadPoint(p2, direction, 65-100), direction)
                 
                 self.am.processError(error, dist)
         
@@ -155,7 +155,7 @@ class ErrorSmoothie:
                         
                         
                         
-                        self.am.updateLatest(p1, direction)
+                        self.am.updateLatest(getLookAheadPoint(p1, direction, 65-100), direction)
                         
                         error, dist = self.am.error_calc.calculateError(lookAheadPoint)
                         
@@ -220,7 +220,7 @@ class ErrorSmoothie:
                 Thread(target = self.smoothErrorDiff).start()
                 Timer(SWITCH_CAMERA_COOLDOWN, self.setSwitchCameraAllowed).start()
                 
-                self.am.updateLatest(p2, direction)
+                self.am.updateLatest(getLookAheadPoint(p2, direction, 65-100), direction)
                 
                 error = error - self.error_diff
                 
