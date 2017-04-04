@@ -25,7 +25,7 @@ SMOOTHING_DT = 0.025
 #great pid for truck in lab: la = 350 + 100 , kp= 100, ki = 0.6, kd = 15
 
 LOOKAHEAD = 450
-LOOKAHEAD_SIM = 450
+LOOKAHEAD_SIM = 250
 
 GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
 
