@@ -27,7 +27,7 @@ class Sim:
         self.latest_sim = rospy.get_time()
 
         self.lh = 270.0 #270
-        self.lt = 490.0 #500
+        self.lt = 445 + 102.5/2 + 50 #500
 
 
         self.x = 3550.0
@@ -68,10 +68,8 @@ class Sim:
         # Accounting for maximum and minimum steering angle
         if (steering_angle > MAX_ANGLE):
             steering_angle = MAX_ANGLE
-            print "Max", rospy.get_time()
         elif (steering_angle < MIN_ANGLE):
             steering_angle = MIN_ANGLE
-            print "Min", rospy.get_time()
         
         
         phi = radians(-steering_angle)
@@ -81,9 +79,20 @@ class Sim:
 
         dd = speed * dt
 
-        next_theta1 = self.theta1 + (dd * tan(phi)) / self.lh
         
-        next_theta2 = self.theta2 + (dd * sin(self.theta1 - self.theta2)) / self.lt
+        dt1 = (dd * tan(phi)) / self.lh
+        next_theta1 = self.theta1 + dt1
+        
+        r = 50.0
+        x = sqrt(dd*dd + (r*dt1)**2)
+        
+        print x-dd
+        
+        #nt1
+        
+        t1_avg = (next_theta1 + self.theta1)/2
+        
+        next_theta2 = self.theta2 + (x * (sin(atan2(r*dt1, dd) + next_theta1 - self.theta2))) / self.lt
         
         
 
