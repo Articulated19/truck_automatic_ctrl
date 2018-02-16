@@ -85,10 +85,11 @@ WINDUP_GUARD = 100.0
 
 
 class AutoMaster:
+    id = 0
     def __init__(self):
-        rospy.init_node('auto_master', anonymous=False)
+        rospy.init_node('auto_master' + str(id), anonymous=False)
 
-        self.sim = rospy.get_param('auto_master/sim')
+        self.sim = rospy.get_param('auto_master/sim' + str(id))
 
         if self.sim:
             self.speed = DRIVE_SPEED_SIM
@@ -125,16 +126,16 @@ class AutoMaster:
 
         self.rviz_path_publisher = rospy.Publisher('rviz_path', Path, queue_size=10)
 
-        rospy.Subscriber('sim_state', TruckState, self.simStateHandler)
+        rospy.Subscriber('sim_state' + str(id), TruckState, self.simStateHandler)
 
-        rospy.Subscriber('initialpose', PoseWithCovarianceStamped, self.initPoseCallback)
-        rospy.Subscriber('gv_positions', GulliViewPositions, self.error_smoothie.gvPositionsHandler)
-        rospy.Subscriber('dead_mans_switch', Bool, self.deadMansSwitchHandler)
-        rospy.Subscriber('trailer_sensor', Float32, self.trailerSensorHandler)
+        rospy.Subscriber('initialpose' + str(id), PoseWithCovarianceStamped, self.initPoseCallback)
+        rospy.Subscriber('gv_positions' + str(id), GulliViewPositions, self.error_smoothie.gvPositionsHandler)
+        rospy.Subscriber('dead_mans_switch' + str(id), Bool, self.deadMansSwitchHandler)
+        rospy.Subscriber('trailer_sensor' + str(id), Float32, self.trailerSensorHandler)
 
-        rospy.Subscriber('path_append', Path, self.pathAppendHandler)
-        rospy.Subscriber('truck_goals', Path, self.startJourneyHandler)
-        rospy.Subscriber('path_rework', Path, self.reworkPathHandler)
+        rospy.Subscriber('path_append' + str(id), Path, self.pathAppendHandler)
+        rospy.Subscriber('truck_goals' + str(id), Path, self.startJourneyHandler)
+        rospy.Subscriber('path_rework' + str(id), Path, self.reworkPathHandler)
 
         print "waiting for journey start cmd"
 
