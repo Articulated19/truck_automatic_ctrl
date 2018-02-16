@@ -136,7 +136,7 @@ class AutoMaster:
         rospy.Subscriber('path_append' + str(id), Path, self.pathAppendHandler)
         rospy.Subscriber('truck_goals' + str(id), Path, self.startJourneyHandler)
         rospy.Subscriber('path_rework' + str(id), Path, self.reworkPathHandler)
-
+        id++
         print "waiting for journey start cmd"
 
 
