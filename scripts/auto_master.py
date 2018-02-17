@@ -113,6 +113,8 @@ class AutoMaster:
         self.latest_position_update = 0
         self.latest_theta2 = None
 
+        self.lock_stop = False
+
 
         self.error_calc = ErrorCalc()
 
@@ -136,8 +138,15 @@ class AutoMaster:
         rospy.Subscriber('truck_goals', Path, self.startJourneyHandler)
         rospy.Subscriber('path_rework', Path, self.reworkPathHandler)
 
+        rospy.Subscriber('section_lock', String, self.sectionLockHandler)
+
         print "waiting for journey start cmd"
 
+    def sectionLockHandler(self, data):
+        if data.data == 'stop':
+            self.lock_stop = True
+        elif data.data == 'continue':
+            self.lock_stop = False
 
     def initPoseCallback(self, data):
         self.error_calc.reset()
@@ -242,26 +251,28 @@ class AutoMaster:
 
 
     def simStateHandler(self,data):
+        if not self.lock_stop:
 
-        p = (data.p.x, data.p.y)
-        t1 = data.theta1
-        t2 = data.theta2
+            p = (data.p.x, data.p.y)
+            t1 = data.theta1
+            t2 = data.theta2
 
-        if t2 == -1:
-            t2 = None
+            if t2 == -1:
+                t2 = None
 
-        lookAheadPoint = getLookAheadPoint(p, t1, self.la_dist-65)
+            lookAheadPoint = getLookAheadPoint(p, t1, self.la_dist-65)
 
-        self.updateLatest(p, t1, degrees(t2-t1))
+            self.updateLatest(p, t1, degrees(t2-t1))
 
-        error, dist = self.error_calc.calculateError(lookAheadPoint)
+            error, dist = self.error_calc.calculateError(lookAheadPoint)
 
-        self.processError(error, dist)
+            self.processError(error, dist)
 
 
 
 
     def processError(self, error, dist):
+
         if dist == 0:
             steering_angle_cmd = 0
             speed_cmd = 0
