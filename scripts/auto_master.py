@@ -145,7 +145,7 @@ class AutoMaster:
     def sectionLockHandler(self, data):
         if data.data == 'stop':
             self.lock_stop = True
-        elif data.data == 'continue':
+        else:
             self.lock_stop = False
 
     def initPoseCallback(self, data):
