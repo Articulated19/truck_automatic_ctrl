@@ -251,22 +251,21 @@ class AutoMaster:
 
 
     def simStateHandler(self,data):
-        if not self.lock_stop:
+        
+        p = (data.p.x, data.p.y)
+        t1 = data.theta1
+        t2 = data.theta2
 
-            p = (data.p.x, data.p.y)
-            t1 = data.theta1
-            t2 = data.theta2
+        if t2 == -1:
+            t2 = None
 
-            if t2 == -1:
-                t2 = None
+        lookAheadPoint = getLookAheadPoint(p, t1, self.la_dist-65)
 
-            lookAheadPoint = getLookAheadPoint(p, t1, self.la_dist-65)
+        self.updateLatest(p, t1, degrees(t2-t1))
 
-            self.updateLatest(p, t1, degrees(t2-t1))
+        error, dist = self.error_calc.calculateError(lookAheadPoint)
 
-            error, dist = self.error_calc.calculateError(lookAheadPoint)
-
-            self.processError(error, dist)
+        self.processError(error, dist)
 
 
 
@@ -295,6 +294,10 @@ class AutoMaster:
         ack = AckermannDrive()
         ack.steering_angle = steering_angle_cmd
         ack.speed = speed_cmd
+
+        if self.lock_stop:
+            ack.speed = 0
+
         self.drive_publisher.publish(ack)
 
 
