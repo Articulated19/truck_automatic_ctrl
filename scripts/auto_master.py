@@ -53,12 +53,12 @@ DRIVE_SPEED_SIM_SLOW = 0.45
 SMOOTHING_TIME = 1.0
 SMOOTHING_DT = 0.025
 
-#great pid for truck in lab: la = 350 + 100 , kp= 100, ki = 0.6, kd = 15
+# great pid for truck in lab: la = 350 + 100 , kp= 100, ki = 0.6, kd = 15
 
 LOOKAHEAD = 300
 LOOKAHEAD_SIM = 250
 
-GOAL_LOOKAHEAD =  LOOKAHEAD * 7.0/8
+GOAL_LOOKAHEAD = LOOKAHEAD * 7.0 / 8
 
 ONLY_FRONT_TAG_LOOKAHEAD = LOOKAHEAD * 0.25
 ONLY_FRONT_TAG_TOO_CLOSE_DIST = 2
@@ -71,7 +71,6 @@ SLOWDOWN_DISTANCE = 40
 MAX_TRAILER_ANGLE = 40.0
 SPEED_INCREASE_COEFFICIENT = 0.2
 
-
 KP = 100
 KI = 0.6
 KD = 15
@@ -79,7 +78,6 @@ KD = 15
 KP_SIM = 200
 KI_SIM = 0
 KD_SIM = 15
-
 
 WINDUP_GUARD = 100.0
 
@@ -115,7 +113,6 @@ class AutoMaster:
 
         self.lock_stop = False
 
-
         self.error_calc = ErrorCalc()
 
         self.error_smoothie = ErrorSmoothie(self)
@@ -145,7 +142,7 @@ class AutoMaster:
     def sectionLockHandler(self, data):
         if data.data == 'stop':
             self.lock_stop = True
-        else:
+        elif data.data == 'continue':
             self.lock_stop = False
 
     def initPoseCallback(self, data):
@@ -154,11 +151,9 @@ class AutoMaster:
         self.error_smoothie.reset()
 
     def trailerSensorHandler(self, data):
-        self.updateLatest(trailerAngle = data.data)
+        self.updateLatest(trailerAngle=data.data)
 
-
-    def updateLatest(self, point = None, direction = None, trailerAngle = None):
-
+    def updateLatest(self, point=None, direction=None, trailerAngle=None):
 
         if point != None:
             self.latest_position = point
@@ -166,7 +161,6 @@ class AutoMaster:
             self.latest_theta1 = direction
         if trailerAngle != None:
             self.latest_trailer_angle = trailerAngle
-
 
         if self.latest_position != None and self.latest_theta1 != None:
 
@@ -182,7 +176,6 @@ class AutoMaster:
             self.latest_position_update = rospy.get_time()
             self.position_publisher.publish(m)
 
-
     def startJourneyHandler(self, data):
         goals = data
         sj = True
@@ -190,7 +183,7 @@ class AutoMaster:
         msg = ""
 
         if rospy.get_time() - self.last_journey_start < JOURNEY_START_REQUEST_COOLDOWN:
-            msg +=  "chill with the requests bro, last one less than 5 sec ago" + "\n"
+            msg += "chill with the requests bro, last one less than 5 sec ago" + "\n"
 
         if self.latest_theta2 == None:
             msg += "no latest theta2" + "\n"
@@ -204,7 +197,7 @@ class AutoMaster:
             msg += "no latest direction" + "\n"
             sj = False
 
-        if rospy.get_time() - self.latest_position_update >= JOURNEY_START_POS_UPDATE_COOLDOWN:  #100 sec just for testing
+        if rospy.get_time() - self.latest_position_update >= JOURNEY_START_POS_UPDATE_COOLDOWN:  # 100 sec just for testing
             msg += "latest position update was ages ago" + "\n"
             sj = False
 
@@ -235,23 +228,17 @@ class AutoMaster:
             except rospy.ServiceException, e:
                 print "Service call failed: %s" % e
 
-
-
     def reworkPathHandler(self, data):
         print "reworked path"
         path = data.path
         self.error_calc.reworkPath(path)
 
-
         pa = self.error_calc.getPath()
-        ms = Path([Position(p.x,p.y) for p in pa])
+        ms = Path([Position(p.x, p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
 
+    def simStateHandler(self, data):
 
-
-
-    def simStateHandler(self,data):
-        
         p = (data.p.x, data.p.y)
         t1 = data.theta1
         t2 = data.theta2
@@ -259,16 +246,13 @@ class AutoMaster:
         if t2 == -1:
             t2 = None
 
-        lookAheadPoint = getLookAheadPoint(p, t1, self.la_dist-65)
+        lookAheadPoint = getLookAheadPoint(p, t1, self.la_dist - 65)
 
-        self.updateLatest(p, t1, degrees(t2-t1))
+        self.updateLatest(p, t1, degrees(t2 - t1))
 
         error, dist = self.error_calc.calculateError(lookAheadPoint)
 
         self.processError(error, dist)
-
-
-
 
     def processError(self, error, dist):
 
@@ -280,7 +264,6 @@ class AutoMaster:
 
             error = error / 1000.0
             steering_angle_cmd = self.pid.update(error)
-
 
             if dist < SLOWDOWN_DISTANCE:
 
@@ -300,11 +283,7 @@ class AutoMaster:
 
         self.drive_publisher.publish(ack)
 
-
-
-
-
-    def pathAppendHandler(self,data):
+    def pathAppendHandler(self, data):
         print "appending path.."
         print data.path
         print "path before", self.error_calc.getPath()
@@ -313,15 +292,12 @@ class AutoMaster:
         pa = self.error_calc.getPath()
 
         print "path after", pa
-        ms = Path([Position(p.x,p.y) for p in pa])
+        ms = Path([Position(p.x, p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
 
-    def deadMansSwitchHandler(self,data):
+    def deadMansSwitchHandler(self, data):
         if not data.data:
             self.pid.clear()
-
-
-
 
 
 if __name__ == '__main__':
