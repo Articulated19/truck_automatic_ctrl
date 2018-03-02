@@ -43,6 +43,7 @@ class ErrorSmoothie:
     def __init__(self, automaster):
         self.am = automaster
 
+        self.pub = rospy.Publisher('tag_ids', String, queue_size=10)
         self.reset()
 
 
@@ -80,6 +81,8 @@ class ErrorSmoothie:
         tagid1 = data.tagid1
         tagid2 = data.tagid2
         cameraid = data.cameraid
+
+        <pub.publish("Tag id 1: %d and Tag id 2: %d" % (tagid1, tagid2));
 
 
         if self.current_camera == -1:
