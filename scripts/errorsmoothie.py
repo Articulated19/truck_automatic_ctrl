@@ -42,6 +42,7 @@ from geometry import *
 class ErrorSmoothie:
     def __init__(self, automaster):
         self.am = automaster
+        self.front_tag = rospy.get_param('auto_master/front_tag')
 
         self.pub = rospy.Publisher('tag_ids', String, queue_size=10)
         self.reset()
@@ -82,7 +83,7 @@ class ErrorSmoothie:
         tagid2 = data.tagid2
         cameraid = data.cameraid
 
-        <pub.publish("Tag id 1: %d and Tag id 2: %d" % (tagid1, tagid2));
+        self.pub.publish("Tag id 1: %d and Tag id 2: %d" % (tagid1, tagid2));
 
 
         if self.current_camera == -1:
@@ -95,7 +96,7 @@ class ErrorSmoothie:
             if p2 == (0,0) and tagid2 == 0:
                 #one tag
 
-                if tagid1 == 1:
+                if tagid1 == self.front_tag:
                     #only back tag
                     print "camera %s: only back tag" % cameraid
                     self.one_tag_cc = True
@@ -136,7 +137,7 @@ class ErrorSmoothie:
             else:
                 #two tags
 
-                if tagid1 !=1:
+                if tagid1 != self.front_tag:
                     tp = p1
                     p1 = p2
                     p2 = tp
@@ -163,7 +164,7 @@ class ErrorSmoothie:
             if p2 == (0,0) and tagid2 == 0:
                 #one tag
 
-                if tagid1 == 1:
+                if tagid1 == self.front_tag:
                     #only back tag
                     print "camera %s: only back tag" % cameraid
 
@@ -226,7 +227,7 @@ class ErrorSmoothie:
                 print "camera %s: two tags" % cameraid
                 print "camera %s: switching to camera %s" % (cameraid, cameraid)
 
-                if tagid1 !=1:
+                if tagid1 != self.front_tag:
                     tp = p1
                     p1 = p2
                     p2 = tp
