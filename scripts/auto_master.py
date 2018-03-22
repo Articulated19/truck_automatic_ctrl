@@ -41,8 +41,11 @@ from pid import *
 from geometry import *
 from math import *
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from collections import deque
+import rospkg
 
 SWITCH_CAMERA_COOLDOWN = 3
+MEASUREMENT_RATE = 0.04
 
 DRIVE_SPEED = 0.49
 DRIVE_SPEED_SLOW = 0.47
@@ -105,11 +108,17 @@ class AutoMaster:
 
         self.last_journey_start = 0
 
+        self.avgPointX = deque([])
+        self.avgPointY = deque([])
+        self.avgDirection = deque([])
+        self.avgTrailerAngle = deque([])
+
         self.latest_trailer_angle = None
         self.latest_position = None
         self.latest_theta1 = None
         self.latest_position_update = 0
         self.latest_theta2 = None
+        self.saveMeasure = False
 
         self.lock_stop = False
 
@@ -153,19 +162,73 @@ class AutoMaster:
     def trailerSensorHandler(self, data):
         self.updateLatest(trailerAngle=data.data)
 
+    def saveMeasurement(self, data, filename):
+        rospack = rospkg.RosPack()
+        mesurementPath = rospack.get_path('truck_automatic_ctrl') + '/measurements/' + filename
+        file = open(mesurementPath, 'a')
+        file.write(data + "\n")
+
+    def allowSaveMeasurement(self):
+        print "allow"
+        self.saveMeasure = True
+
     def updateLatest(self, point=None, direction=None, trailerAngle=None):
 
         if point != None:
-            self.latest_position = point
+
+            if len(self.avgPointX) > 20:
+                self.avgPointX.popleft()
+
+            self.avgPointX.append(point[0])
+
+            if len(self.avgPointY) > 20:
+                self.avgPointY.popleft()
+
+            self.avgPointY.append(point[1])
+
+            avgX = sum(self.avgPointX) / len(self.avgPointX)
+            avgY = sum(self.avgPointY) / len(self.avgPointY)
+
+            self.latest_position = (avgX, avgY)
+
+
         if direction != None:
-            self.latest_theta1 = direction
+            if len(self.avgDirection) > 15:
+                self.avgDirection.popleft()
+
+            self.avgDirection.append(direction)
+            avgDir = sum(self.avgDirection) / len(self.avgDirection)
+
+            self.latest_theta1 = avgDir
+
         if trailerAngle != None:
-            self.latest_trailer_angle = trailerAngle
+            if len(self.avgTrailerAngle) > 5:
+                self.avgTrailerAngle.popleft()
+
+            self.avgTrailerAngle.append(trailerAngle)
+            avgTraileraAngle = sum(self.avgTrailerAngle) / len(self.avgTrailerAngle)
+
+            self.latest_trailer_angle = avgTraileraAngle
 
         if self.latest_position != None and self.latest_theta1 != None:
 
             if self.latest_trailer_angle == None:
                 return
+
+
+            # if self.saveMeasure:
+            #     self.saveMeasure = False
+            #     if trailerAngle != None:
+            #         self.saveMeasurement("%f" % trailerAngle, "trailer_angle.txt")
+            #
+            #     if direction != None:
+            #         self.saveMeasurement("%f" % direction, "direction.txt")
+            #
+            #     if point != None:
+            #         self.saveMeasurement("%d" % point[0], "x.txt")
+            #         self.saveMeasurement("%d" % point[1], "y.txt")
+
+                #Timer(MEASUREMENT_RATE, self.allowSaveMeasurement).start()
 
             m = TruckState()
             m.p = Position(*self.latest_position)
@@ -234,6 +297,7 @@ class AutoMaster:
         self.error_calc.reworkPath(path)
 
         pa = self.error_calc.getPath()
+        print path
         ms = Path([Position(p.x, p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
 
