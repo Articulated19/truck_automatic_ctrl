@@ -91,6 +91,8 @@ class ErrorSmoothie:
         cameraid = data.cameraid
         cameraid1 = data.cameraid1
         cameraid2 = data.cameraid2
+        number_of_tags = data.number_of_tags
+        print number_of_tags
 
         self.pub.publish("Tag id 1: %d and Tag id 2: %d" % (tagid1, tagid2))
 
@@ -104,7 +106,7 @@ class ErrorSmoothie:
         if self.current_camera == cameraid:
             # current camera
 
-            if p2 == (0,0) and tagid2 == 0:
+            if number_of_tags == 1:
                 #one tags
 
                 if tagid1 == self.front_tag:
@@ -147,7 +149,6 @@ class ErrorSmoothie:
 
             else:
                 #two tags
-
                 if tagid1 != self.front_tag:
                     tp = p1
                     p1 = p2

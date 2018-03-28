@@ -176,12 +176,12 @@ class AutoMaster:
 
         if point != None:
 
-            if len(self.avgPointX) > 20:
+            if len(self.avgPointX) > 10:
                 self.avgPointX.popleft()
 
             self.avgPointX.append(point[0])
 
-            if len(self.avgPointY) > 20:
+            if len(self.avgPointY) > 10:
                 self.avgPointY.popleft()
 
             self.avgPointY.append(point[1])
@@ -193,7 +193,7 @@ class AutoMaster:
 
 
         if direction != None:
-            if len(self.avgDirection) > 15:
+            if len(self.avgDirection) > 10:
                 self.avgDirection.popleft()
 
             self.avgDirection.append(direction)
