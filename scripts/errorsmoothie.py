@@ -122,9 +122,9 @@ class ErrorSmoothie:
                     print "camera %s: only back tag (current)" % cameraid
 
                     if self.last_p1:
-                        direction = self.last_direction
+                        direction = getDirection(self.last_p1, p2)
 
-                        lookAheadPoint = getLookAheadPoint(self.last_p1, direction, LOOKAHEAD)
+                        lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
                         error, dist = self.am.error_calc.calculateError(lookAheadPoint)
                         self.last_error = error
 
@@ -170,7 +170,6 @@ class ErrorSmoothie:
                 error = error - self.error_diff
 
                 self.latest_front_point_cc = p2
-                print getLookAheadPoint(p1, direction, 65-100)
                 self.am.updateLatest(getLookAheadPoint(p1, direction, 65-100), direction)
                 self.last_direction = direction
                 self.am.processError(error, dist)
@@ -180,10 +179,10 @@ class ErrorSmoothie:
                 print "camera %s: cant switch camera yet bro" % cameraid
                 return
 
-            if p2 == (0,0) and tagid2 == 0:
+            if front_tag_not_visible or back_tag_not_visible:
                 #one tag
 
-                if tagid1 == self.front_tag:
+                if front_tag_not_visible:
                     #only back tag
                     print "camera %s: only back tag" % cameraid
                     self.one_tag_cc = True
@@ -192,9 +191,10 @@ class ErrorSmoothie:
                     #only front tag
                     print "camera %s: only front tag" % cameraid
                     if self.one_tag_cc:
+
                         print "camera %s: cc can only see one tag, switching camera to %s"  % (cameraid, cameraid)
 
-                        direction = getDirection(p1, self.last_p2)
+                        direction = self.last_direction
                         lookAheadPoint = getLookAheadPoint(p1, direction, LOOKAHEAD)
 
                         if direction != None:
