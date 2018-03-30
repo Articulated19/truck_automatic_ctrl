@@ -235,6 +235,7 @@ class AutoMaster:
             m.theta1 = self.latest_theta1
 
             m.theta2 = self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_theta1
+            print m.theta1
 
             self.latest_position_update = rospy.get_time()
             self.position_publisher.publish(m)
@@ -319,6 +320,7 @@ class AutoMaster:
         self.processError(error, dist)
 
     def processError(self, error, dist):
+
 
         if dist == 0:
             steering_angle_cmd = 0

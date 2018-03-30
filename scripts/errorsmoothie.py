@@ -170,6 +170,7 @@ class ErrorSmoothie:
                 error = error - self.error_diff
 
                 self.latest_front_point_cc = p2
+                print getLookAheadPoint(p1, direction, 65-100)
                 self.am.updateLatest(getLookAheadPoint(p1, direction, 65-100), direction)
                 self.last_direction = direction
                 self.am.processError(error, dist)
