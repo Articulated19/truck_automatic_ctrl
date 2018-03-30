@@ -177,12 +177,12 @@ class AutoMaster:
 
         if point != None:
 
-            if len(self.avgPointX) > 15:
+            if len(self.avgPointX) > 1:
                 self.avgPointX.popleft()
 
             self.avgPointX.append(point[0])
 
-            if len(self.avgPointY) > 15:
+            if len(self.avgPointY) > 1:
                 self.avgPointY.popleft()
 
             self.avgPointY.append(point[1])
@@ -194,16 +194,16 @@ class AutoMaster:
 
 
         if direction != None:
-            if len(self.avgDirection) > 15:
+            if len(self.avgDirection) > 1:
                 self.avgDirection.popleft()
 
             self.avgDirection.append(direction)
             avgDir = sum(self.avgDirection) / len(self.avgDirection)
 
-            self.latest_theta1 = avgDir
+            self.latest_theta1 = direction
 
         if trailerAngle != None:
-            if len(self.avgTrailerAngle) > 5:
+            if len(self.avgTrailerAngle) > 1:
                 self.avgTrailerAngle.popleft()
 
             self.avgTrailerAngle.append(trailerAngle)
@@ -235,15 +235,9 @@ class AutoMaster:
             m.p = Position(*self.latest_position)
             m.theta1 = self.latest_theta1
 
-            self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_theta1
+            print self.latest_theta1
 
-            if len(self.avgTheta2) > 10:
-                self.avgTheta2.popleft()
-
-            self.avgTheta2.append(self.latest_theta2)
-            avgTheta2 = sum(self.avgTheta2) / len(self.avgTheta2)
-
-            m.theta2 = avgTheta2
+            m.theta2 = self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_theta1
 
             self.latest_position_update = rospy.get_time()
             self.position_publisher.publish(m)

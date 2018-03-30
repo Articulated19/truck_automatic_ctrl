@@ -89,8 +89,8 @@ class ErrorSmoothie:
         p1 = (data.p1.x, data.p1.y)
         p2 = (data.p2.x, data.p2.y)
 
-        print "Tag 1 - x: %d, y:%d" % (data.p1.x, data.p1.y)
-        print "Tag 2 - x: %d, y:%d" % (data.p2.x, data.p2.y)
+        #print "Tag 1 - x: %d, y:%d" % (data.p1.x, data.p1.y)
+        #print "Tag 2 - x: %d, y:%d" % (data.p2.x, data.p2.y)
 
         tagid1 = data.tagid1
         tagid2 = data.tagid2
@@ -115,11 +115,11 @@ class ErrorSmoothie:
             if front_tag_not_visible or back_tag_not_visible:
                 #one tags
 
-                print "camera %s: only one of the tags are showing" % cameraid
+                #print "camera %s: only one of the tags are showing" % cameraid
 
                 if front_tag_not_visible:
                     #only back tag
-                    print "camera %s: only back tag (current)" % cameraid
+                    #print "camera %s: only back tag (current)" % cameraid
 
                     if self.last_p1:
                         direction = getDirection(self.last_p1, p2)
@@ -137,7 +137,7 @@ class ErrorSmoothie:
 
                 else:
                     # only front tag
-                    print "camera %s: only front tag" % cameraid
+                    #print "camera %s: only front tag" % cameraid
 
                     if self.last_p2:
                         direction = self.last_direction
@@ -159,7 +159,7 @@ class ErrorSmoothie:
 
             else:
                 #two tags
-                print "camera %s: I see two tags" % cameraid
+                #print "camera %s: I see two tags" % cameraid
 
                 direction = getDirection(p1, p2)
                 lookAheadPoint = getLookAheadPoint(p1, direction, LOOKAHEAD)
@@ -184,7 +184,7 @@ class ErrorSmoothie:
 
                 if front_tag_not_visible:
                     #only back tag
-                    print "camera %s: only back tag" % cameraid
+                    #print "camera %s: only back tag" % cameraid
                     self.one_tag_cc = True
 
                 else:
@@ -192,7 +192,7 @@ class ErrorSmoothie:
                     print "camera %s: only front tag" % cameraid
                     if self.one_tag_cc:
 
-                        print "camera %s: cc can only see one tag, switching camera to %s"  % (cameraid, cameraid)
+                        #print "camera %s: cc can only see one tag, switching camera to %s"  % (cameraid, cameraid)
 
                         direction = self.last_direction
                         lookAheadPoint = getLookAheadPoint(p1, direction, LOOKAHEAD)
@@ -203,7 +203,7 @@ class ErrorSmoothie:
                         error, dist = self.am.error_calc.calculateError(lookAheadPoint)
 
                         self.error_diff = error - self.last_error
-                        print "camera %s: error_diff %f" % (cameraid, self.error_diff)
+                        #print "camera %s: error_diff %f" % (cameraid, self.error_diff)
                         self.last_error = error
 
                         self.current_camera = cameraid
@@ -214,7 +214,7 @@ class ErrorSmoothie:
 
                         self.switch_camera_allowed = False
 
-                        print "camera %s: start smoothing" % cameraid
+                        #print "camera %s: start smoothing" % cameraid
                         Thread(target = self.smoothErrorDiff).start()
                         Timer(SWITCH_CAMERA_COOLDOWN, self.setSwitchCameraAllowed).start()
 
@@ -225,7 +225,7 @@ class ErrorSmoothie:
                         self.am.processError(error, dist)
 
                     else:
-                        print "camera %s: cc can still see both tags" % cameraid
+                        #print "camera %s: cc can still see both tags" % cameraid
                         self.last_front_point_nc = p1
 
 
@@ -239,7 +239,7 @@ class ErrorSmoothie:
 
                 self.error_diff = error - self.last_error
 
-                print "camera %s: error_diff %f" % (cameraid, self.error_diff)
+                #print "camera %s: error_diff %f" % (cameraid, self.error_diff)
 
                 self.current_camera = cameraid
 
@@ -250,7 +250,7 @@ class ErrorSmoothie:
                 self.switch_camera_allowed = False
 
                 print "camera %s: start smoothing" % cameraid
-                #Thread(target = self.smoothErrorDiff).start()
+                Thread(target = self.smoothErrorDiff).start()
                 Timer(SWITCH_CAMERA_COOLDOWN, self.setSwitchCameraAllowed).start()
 
                 if direction != None:
