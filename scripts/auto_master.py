@@ -112,6 +112,7 @@ class AutoMaster:
         self.avgPointY = deque([])
         self.avgDirection = deque([])
         self.avgTrailerAngle = deque([])
+        self.avgTheta2 = deque([])
 
         self.latest_trailer_angle = None
         self.latest_position = None
@@ -176,12 +177,12 @@ class AutoMaster:
 
         if point != None:
 
-            if len(self.avgPointX) > 10:
+            if len(self.avgPointX) > 1:
                 self.avgPointX.popleft()
 
             self.avgPointX.append(point[0])
 
-            if len(self.avgPointY) > 10:
+            if len(self.avgPointY) > 1:
                 self.avgPointY.popleft()
 
             self.avgPointY.append(point[1])
@@ -193,16 +194,16 @@ class AutoMaster:
 
 
         if direction != None:
-            if len(self.avgDirection) > 10:
+            if len(self.avgDirection) > 1:
                 self.avgDirection.popleft()
 
             self.avgDirection.append(direction)
             avgDir = sum(self.avgDirection) / len(self.avgDirection)
 
-            self.latest_theta1 = avgDir
+            self.latest_theta1 = direction
 
         if trailerAngle != None:
-            if len(self.avgTrailerAngle) > 5:
+            if len(self.avgTrailerAngle) > 1:
                 self.avgTrailerAngle.popleft()
 
             self.avgTrailerAngle.append(trailerAngle)
@@ -233,6 +234,8 @@ class AutoMaster:
             m = TruckState()
             m.p = Position(*self.latest_position)
             m.theta1 = self.latest_theta1
+
+            print self.latest_theta1
 
             m.theta2 = self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_theta1
 
@@ -319,6 +322,7 @@ class AutoMaster:
         self.processError(error, dist)
 
     def processError(self, error, dist):
+
 
         if dist == 0:
             steering_angle_cmd = 0

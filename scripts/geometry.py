@@ -42,6 +42,7 @@ class Point:
 
 
 def getDirection((x1,y1), (x2,y2)):
+    #print "atan(%d - %d = %d, %d - %d = %d) = %d" % (y2,y1,y2-y1,x2,x1,x2-x1,atan2(y2-y1, x2-x1))
     return atan2(y2-y1, x2-x1)
 
 def getLookAheadPoint((x,y), direction, lookahead):
