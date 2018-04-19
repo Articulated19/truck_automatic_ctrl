@@ -135,6 +135,8 @@ class AutoMaster:
 
         self.rviz_path_publisher = rospy.Publisher('rviz_path', Path, queue_size=10)
 
+        self.lock_stop = False
+
         rospy.Subscriber('sim_state', TruckState, self.simStateHandler)
 
         rospy.Subscriber('initialpose', PoseWithCovarianceStamped, self.initPoseCallback)
@@ -146,7 +148,17 @@ class AutoMaster:
         rospy.Subscriber('truck_goals', Path, self.startJourneyHandler)
         rospy.Subscriber('path_rework', Path, self.reworkPathHandler)
 
+        rospy.Subscriber('section_lock', String, self.sectionLockHandler)
+
         print "waiting for journey start cmd"
+
+    def sectionLockHandler(self, data):
+
+        if data.data == 'stop':
+            self.lock_stop = True
+
+        elif data.data == 'continue':
+            self.lock_stop = False
 
     def initPoseCallback(self, data):
         self.error_calc.reset()
@@ -279,6 +291,10 @@ class AutoMaster:
         ack = AckermannDrive()
         ack.steering_angle = steering_angle_cmd
         ack.speed = speed_cmd
+
+        if self.lock_stop:
+            ack.speed = 0
+
         self.drive_publisher.publish(ack)
 
     def pathAppendHandler(self, data):
