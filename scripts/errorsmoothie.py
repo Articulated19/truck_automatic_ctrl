@@ -39,27 +39,18 @@ from math import sqrt
 import time
 from geometry import *
 
+
 class ErrorSmoothie:
-    def __init__(self, automaster):
+    def __init__(self, automaster, backtag, fronttag):
         self.am = automaster
-        self.front_tag = rospy.get_param('auto_master/front_tag')
-        self.last_cam_pos = {
-            '0': {'p1': None, 'p2': None},
-            '1': {'p1': None, 'p2': None},
-            '2': {'p1': None, 'p2': None}
-        }
+        self.backtag = backtag
+        self.fronttag = fronttag
 
-        self.pub = rospy.Publisher('tag_ids', String, queue_size=10)
         self.reset()
-        self.last_direction = None
-
-        self.last_p1 = None
-        self.last_p2 = None
 
     def reset(self):
         self.current_camera = -1
         self.switch_camera_allowed = True
-        self.last_cam_pos = {}
 
         self.one_tag_cc = False
 
@@ -72,7 +63,7 @@ class ErrorSmoothie:
 
     def smoothErrorDiff(self):
 
-        iterations = (SMOOTHING_TIME/SMOOTHING_DT)
+        iterations = (SMOOTHING_TIME / SMOOTHING_DT)
         de = self.error_diff / iterations
 
         for i in range(int(iterations)):
@@ -84,126 +75,119 @@ class ErrorSmoothie:
         print "switch camera allowed"
         self.switch_camera_allowed = True
 
-
     def gvPositionsHandler(self, data):
         p1 = (data.p1.x, data.p1.y)
         p2 = (data.p2.x, data.p2.y)
-
-        #print "Tag 1 - x: %d, y:%d" % (data.p1.x, data.p1.y)
-        #print "Tag 2 - x: %d, y:%d" % (data.p2.x, data.p2.y)
-
         tagid1 = data.tagid1
         tagid2 = data.tagid2
         cameraid = data.cameraid
 
-        front_tag_not_visible = p1[0] == -1 and p1[1] == -1
-        back_tag_not_visible = p2[0] == -1 and p2[1] == -1
-
-        if not front_tag_not_visible:
-            self.last_p1 = p1
-
-        if not back_tag_not_visible:
-            self.last_p2 = p2
-
         if self.current_camera == -1:
             self.current_camera = cameraid
-
 
         if self.current_camera == cameraid:
             # current camera
 
-            if front_tag_not_visible or back_tag_not_visible:
-                #one tags
+            if p2 == (0, 0) and tagid2 == 0:
+                # one tag
 
-                #print "camera %s: only one of the tags are showing" % cameraid
-
-                if front_tag_not_visible:
-                    #only back tag
-                    #print "camera %s: only back tag (current)" % cameraid
-
-                    if self.last_p1:
-                        direction = getDirection(self.last_p1, p2)
-
-                        lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
-                        error, dist = self.am.error_calc.calculateError(lookAheadPoint)
-                        self.last_error = error
-
-                        error = error - self.error_diff
-
-                        if direction != None:
-                            self.am.updateLatest(getLookAheadPoint(self.last_p1, direction, 65-100), direction)
-
-                        self.am.processError(error, dist)
+                if tagid1 == self.backtag:
+                    # only back tag
+                    print "camera %s: only back tag" % cameraid
+                    self.one_tag_cc = True
 
                 else:
                     # only front tag
-                    #print "camera %s: only front tag" % cameraid
+                    print "camera %s: only front tag" % cameraid
 
-                    if self.last_p2:
-                        direction = self.last_direction
+                    if self.last_front_point_cc == None:
+                        print "camera %s: no last front point, use no lookahead" % cameraid
+                        lookAheadPoint = p1
+                        direction = None
+                    elif getDistanceBetweenPoints(p1, self.last_front_point_cc) < ONLY_FRONT_TAG_TOO_CLOSE_DIST:
+                        print "camera %s: last front point too close, use no lookahead" % cameraid
+                        lookAheadPoint = p1
+                        direction = None
+                    else:
+                        print "camera %s: getting direction from last front point, use small lookahead" % cameraid
+                        # maybe not using any lookahead is better...?
+                        direction = getDirection(self.last_front_point_cc, p1)
                         lookAheadPoint = getLookAheadPoint(p1, direction, ONLY_FRONT_TAG_LOOKAHEAD)
 
-                        error, dist = self.am.error_calc.calculateError(lookAheadPoint)
-                        self.last_error = error
+                    error, dist = self.am.error_calc.calculateError(lookAheadPoint)
+                    self.last_error = error
 
-                        error = error - self.error_diff
+                    error = error - self.error_diff
 
+                    self.last_front_point_cc = p1
+                    if direction != None:
+                        self.am.updateLatest(getLookAheadPoint(p1, direction, 65 - 100), direction)
 
-                        self.last_front_point_cc = p1
-                        if direction != None:
-                            self.am.updateLatest(getLookAheadPoint(p1, direction, 65-100), direction)
-
-                        self.am.processError(error, dist)
+                    self.am.processError(error, dist)
 
 
 
             else:
-                #two tags
-                #print "camera %s: I see two tags" % cameraid
+                # two tags
+
+                if tagid1 != self.backtag:
+                    tp = p1
+                    p1 = p2
+                    p2 = tp
 
                 direction = getDirection(p1, p2)
-                lookAheadPoint = getLookAheadPoint(p1, direction, LOOKAHEAD)
+                lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
 
-                error,dist = self.am.error_calc.calculateError(lookAheadPoint)
+                error, dist = self.am.error_calc.calculateError(lookAheadPoint)
                 self.last_error = error
 
                 error = error - self.error_diff
 
                 self.latest_front_point_cc = p2
-                self.am.updateLatest(getLookAheadPoint(p1, direction, 65-100), direction)
-                self.last_direction = direction
+                if direction != None:
+                    self.am.updateLatest(getLookAheadPoint(p2, direction, 65 - 100), direction)
+
                 self.am.processError(error, dist)
 
         else:
-            if not self.switch_camera_allowed: #just switched cameras, old camera not interesting
+            if not self.switch_camera_allowed:  # just switched cameras, old camera not interesting
                 print "camera %s: cant switch camera yet bro" % cameraid
                 return
 
-            if front_tag_not_visible or back_tag_not_visible:
-                #one tag
+            if p2 == (0, 0) and tagid2 == 0:
+                # one tag
 
-                if front_tag_not_visible:
-                    #only back tag
-                    #print "camera %s: only back tag" % cameraid
-                    self.one_tag_cc = True
+                if tagid1 == self.backtag:
+                    # only back tag
+                    print "camera %s: only back tag" % cameraid
 
                 else:
-                    #only front tag
+                    # only front tag
                     print "camera %s: only front tag" % cameraid
                     if self.one_tag_cc:
+                        print "camera %s: cc can only see one tag, switching camera to %s" % (cameraid, cameraid)
 
-                        #print "camera %s: cc can only see one tag, switching camera to %s"  % (cameraid, cameraid)
-
-                        direction = self.last_direction
-                        lookAheadPoint = getLookAheadPoint(p1, direction, LOOKAHEAD)
+                        if self.last_front_point_nc == None:
+                            print "camera %s: no last front point, use no lookahead" % cameraid
+                            lookAheadPoint = p1
+                            direction = None
+                        elif getDistanceBetweenPoints(p1, self.last_front_point_nc) < ONLY_FRONT_TAG_TOO_CLOSE_DIST:
+                            print "camera %s: last front point too close, use no lookahead" % cameraid
+                            lookAheadPoint = p1
+                            direction = None
+                        else:
+                            print "camera %s: getting direction from last front point, use small lookahead" % cameraid
+                            # maybe not using any lookahead is better...?
+                            direction = getDirection(self.last_front_point_nc, p1)
+                            lookAheadPoint = getLookAheadPoint(p1, direction, ONLY_FRONT_TAG_LOOKAHEAD)
 
                         if direction != None:
-                            self.am.updateLatest(getLookAheadPoint(p1, direction, 65-100), direction)
+                            self.am.updateLatest(getLookAheadPoint(p1, direction, 65 - 100), direction)
 
                         error, dist = self.am.error_calc.calculateError(lookAheadPoint)
 
                         self.error_diff = error - self.last_error
-                        #print "camera %s: error_diff %f" % (cameraid, self.error_diff)
+                        print "camera %s: error_diff %f" % (cameraid, self.error_diff)
                         self.last_error = error
 
                         self.current_camera = cameraid
@@ -214,32 +198,37 @@ class ErrorSmoothie:
 
                         self.switch_camera_allowed = False
 
-                        #print "camera %s: start smoothing" % cameraid
-                        Thread(target = self.smoothErrorDiff).start()
+                        print "camera %s: start smoothing" % cameraid
+                        Thread(target=self.smoothErrorDiff).start()
                         Timer(SWITCH_CAMERA_COOLDOWN, self.setSwitchCameraAllowed).start()
 
-
                         error = error - self.error_diff
-
 
                         self.am.processError(error, dist)
 
                     else:
-                        #print "camera %s: cc can still see both tags" % cameraid
+                        print "camera %s: cc can still see both tags" % cameraid
                         self.last_front_point_nc = p1
 
 
-            else: #two tags
+            else:  # two tags
 
-                direction = getDirection(p1,p2)
-                self.last_direction = direction
-                lookAheadPoint = getLookAheadPoint(p1, direction, LOOKAHEAD)
+                print "camera %s: two tags" % cameraid
+                print "camera %s: switching to camera %s" % (cameraid, cameraid)
 
-                error,dist = self.am.error_calc.calculateError(lookAheadPoint)
+                if tagid1 != self.backtag:
+                    tp = p1
+                    p1 = p2
+                    p2 = tp
+
+                direction = getDirection(p1, p2)
+                lookAheadPoint = getLookAheadPoint(p2, direction, LOOKAHEAD)
+
+                error, dist = self.am.error_calc.calculateError(lookAheadPoint)
 
                 self.error_diff = error - self.last_error
 
-                #print "camera %s: error_diff %f" % (cameraid, self.error_diff)
+                print "camera %s: error_diff %f" % (cameraid, self.error_diff)
 
                 self.current_camera = cameraid
 
@@ -250,11 +239,10 @@ class ErrorSmoothie:
                 self.switch_camera_allowed = False
 
                 print "camera %s: start smoothing" % cameraid
-                Thread(target = self.smoothErrorDiff).start()
+                Thread(target=self.smoothErrorDiff).start()
                 Timer(SWITCH_CAMERA_COOLDOWN, self.setSwitchCameraAllowed).start()
-
                 if direction != None:
-                    self.am.updateLatest(getLookAheadPoint(p2, direction, 65-100), direction)
+                    self.am.updateLatest(getLookAheadPoint(p2, direction, 65 - 100), direction)
 
                 error = error - self.error_diff
 

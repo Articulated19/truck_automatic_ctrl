@@ -41,14 +41,11 @@ from pid import *
 from geometry import *
 from math import *
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from collections import deque
-import rospkg
 
 SWITCH_CAMERA_COOLDOWN = 3
-MEASUREMENT_RATE = 0.04
 
-DRIVE_SPEED = 0.49
-DRIVE_SPEED_SLOW = 0.47
+DRIVE_SPEED = 0.45
+DRIVE_SPEED_SLOW = 0.45
 
 DRIVE_SPEED_SIM = 0.45
 DRIVE_SPEED_SIM_SLOW = 0.45
@@ -90,6 +87,19 @@ class AutoMaster:
         rospy.init_node('auto_master', anonymous=False)
 
         self.sim = rospy.get_param('auto_master/sim')
+        self.id = rospy.get_param('auto_master/id')
+
+        if self.id == 1:
+            self.backtag = 4
+            self.fronttag = 5
+
+        if self.id == 2:
+            self.backtag = 14
+            self.fronttag = 16
+
+        if self.id == 3:
+            self.backtag = 0  # TODO
+            self.fronttag = 0  # TODO
 
         if self.sim:
             self.speed = DRIVE_SPEED_SIM
@@ -108,24 +118,15 @@ class AutoMaster:
 
         self.last_journey_start = 0
 
-        self.avgPointX = deque([])
-        self.avgPointY = deque([])
-        self.avgDirection = deque([])
-        self.avgTrailerAngle = deque([])
-        self.avgTheta2 = deque([])
-
         self.latest_trailer_angle = None
         self.latest_position = None
         self.latest_theta1 = None
         self.latest_position_update = 0
         self.latest_theta2 = None
-        self.saveMeasure = False
-
-        self.lock_stop = False
 
         self.error_calc = ErrorCalc()
 
-        self.error_smoothie = ErrorSmoothie(self)
+        self.error_smoothie = ErrorSmoothie(self, self.backtag, self.fronttag)
 
         self.pid = PID(self.kp, self.ki, self.kd, WINDUP_GUARD)
 
@@ -145,15 +146,7 @@ class AutoMaster:
         rospy.Subscriber('truck_goals', Path, self.startJourneyHandler)
         rospy.Subscriber('path_rework', Path, self.reworkPathHandler)
 
-        rospy.Subscriber('section_lock', String, self.sectionLockHandler)
-
         print "waiting for journey start cmd"
-
-    def sectionLockHandler(self, data):
-        if data.data == 'stop':
-            self.lock_stop = True
-        elif data.data == 'continue':
-            self.lock_stop = False
 
     def initPoseCallback(self, data):
         self.error_calc.reset()
@@ -163,79 +156,23 @@ class AutoMaster:
     def trailerSensorHandler(self, data):
         self.updateLatest(trailerAngle=data.data)
 
-    def saveMeasurement(self, data, filename):
-        rospack = rospkg.RosPack()
-        mesurementPath = rospack.get_path('truck_automatic_ctrl') + '/measurements/' + filename
-        file = open(mesurementPath, 'a')
-        file.write(data + "\n")
-
-    def allowSaveMeasurement(self):
-        print "allow"
-        self.saveMeasure = True
-
     def updateLatest(self, point=None, direction=None, trailerAngle=None):
 
         if point != None:
-
-            if len(self.avgPointX) > 1:
-                self.avgPointX.popleft()
-
-            self.avgPointX.append(point[0])
-
-            if len(self.avgPointY) > 1:
-                self.avgPointY.popleft()
-
-            self.avgPointY.append(point[1])
-
-            avgX = sum(self.avgPointX) / len(self.avgPointX)
-            avgY = sum(self.avgPointY) / len(self.avgPointY)
-
-            self.latest_position = (avgX, avgY)
-
-
+            self.latest_position = point
         if direction != None:
-            if len(self.avgDirection) > 1:
-                self.avgDirection.popleft()
-
-            self.avgDirection.append(direction)
-            avgDir = sum(self.avgDirection) / len(self.avgDirection)
-
             self.latest_theta1 = direction
-
         if trailerAngle != None:
-            if len(self.avgTrailerAngle) > 1:
-                self.avgTrailerAngle.popleft()
-
-            self.avgTrailerAngle.append(trailerAngle)
-            avgTraileraAngle = sum(self.avgTrailerAngle) / len(self.avgTrailerAngle)
-
-            self.latest_trailer_angle = avgTraileraAngle
+            self.latest_trailer_angle = trailerAngle
 
         if self.latest_position != None and self.latest_theta1 != None:
 
             if self.latest_trailer_angle == None:
                 return
 
-
-            # if self.saveMeasure:
-            #     self.saveMeasure = False
-            #     if trailerAngle != None:
-            #         self.saveMeasurement("%f" % trailerAngle, "trailer_angle.txt")
-            #
-            #     if direction != None:
-            #         self.saveMeasurement("%f" % direction, "direction.txt")
-            #
-            #     if point != None:
-            #         self.saveMeasurement("%d" % point[0], "x.txt")
-            #         self.saveMeasurement("%d" % point[1], "y.txt")
-
-                #Timer(MEASUREMENT_RATE, self.allowSaveMeasurement).start()
-
             m = TruckState()
             m.p = Position(*self.latest_position)
             m.theta1 = self.latest_theta1
-
-            print self.latest_theta1
 
             m.theta2 = self.latest_theta2 = radians(self.latest_trailer_angle) + self.latest_theta1
 
@@ -300,7 +237,6 @@ class AutoMaster:
         self.error_calc.reworkPath(path)
 
         pa = self.error_calc.getPath()
-        print path
         ms = Path([Position(p.x, p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
 
@@ -322,8 +258,6 @@ class AutoMaster:
         self.processError(error, dist)
 
     def processError(self, error, dist):
-
-
         if dist == 0:
             steering_angle_cmd = 0
             speed_cmd = 0
@@ -345,10 +279,6 @@ class AutoMaster:
         ack = AckermannDrive()
         ack.steering_angle = steering_angle_cmd
         ack.speed = speed_cmd
-
-        if self.lock_stop:
-            ack.speed = 0
-
         self.drive_publisher.publish(ack)
 
     def pathAppendHandler(self, data):
