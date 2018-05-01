@@ -136,6 +136,9 @@ class AutoMaster:
         self.rviz_path_publisher = rospy.Publisher('rviz_path', Path, queue_size=10)
 
         self.lock_stop = False
+        self.driving = False
+        self.start_time = 0
+
 
         rospy.Subscriber('sim_state', TruckState, self.simStateHandler)
 
@@ -238,6 +241,7 @@ class AutoMaster:
                     self.error_smoothie.reset()
                     self.last_journey_start = rospy.get_time()
                     self.error_calc.appendPath([state.p])
+
                 else:
                     print resp.message
             except rospy.ServiceException, e:
@@ -292,20 +296,32 @@ class AutoMaster:
         ack.steering_angle = steering_angle_cmd
         ack.speed = speed_cmd
 
+        if ack.speed > 0 and self.driving == False:
+            self.start_time = rospy.get_time()
+            self.driving = True
+
+        if ack.speed == 0 and self.driving == True:
+            stop_time = rospy.get_time()
+            self.driving = False
+            print "Time: " + str(stop_time - self.start_time)
+            self.start_time = 0
+
         if self.lock_stop:
             ack.speed = 0
+
+        #print "Speed = " + str(ack.speed)
 
         self.drive_publisher.publish(ack)
 
     def pathAppendHandler(self, data):
-        print "appending path.."
+        #print "appending path.."
         print data.path
-        print "path before", self.error_calc.getPath()
+        #print "path before", self.error_calc.getPath()
         self.error_calc.appendPath(data.path)
 
         pa = self.error_calc.getPath()
 
-        print "path after", pa
+        #print "path after", pa
         ms = Path([Position(p.x, p.y) for p in pa])
         self.rviz_path_publisher.publish(ms)
 
